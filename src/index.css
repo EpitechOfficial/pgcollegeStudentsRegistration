@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-page font-sans text-ink antialiased;
+    text-rendering: optimizeLegibility;
+    font-synthesis: none;
+  }
+
+  ::selection {
+    @apply bg-gold/30 text-navy-950;
+  }
+
+  /* Visible, consistent focus ring across the portal */
+  :focus-visible {
+    outline: 2px solid theme('colors.navy.700');
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Lower-contrast contexts use the gold ring */
+  .on-navy :focus-visible {
+    outline-color: theme('colors.gold.DEFAULT');
+  }
+
+  input::placeholder {
+    @apply text-faint;
+  }
+}
+
+@layer utilities {
+  /* Login backdrop: solid deep navy with a faint institutional image woven in.
+     No gradients anywhere — depth comes from layered solid/alpha fills. */
+  .login-backdrop::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background-image: url('/campus/pg-school.jpg');
+    background-size: cover;
+    background-position: center 30%;
+    opacity: 0.14;
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.92);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+    }
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-panel {
+      background: #ffffff;
+    }
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
