@@ -5,8 +5,8 @@ import type { Credentials } from '../types'
  * authentication endpoint call when wiring to the live API.
  */
 const VALID_CREDENTIALS = {
-  matric: 'PG/2024/03571',
-  password: 'portal123',
+  matric: 'PG123',
+  password: 'pg@123',
 }
 
 export type AuthError =

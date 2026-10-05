@@ -39,8 +39,9 @@ const FAQS: ReadonlyArray<{ question: string; answer: string }> = [
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [matric, setMatric] = useState(rememberedMatric())
-  const [password, setPassword] = useState('')
+  // const [matric, setMatric] = useState(rememberedMatric())
+  const [matric, setMatric] = useState('PG123')
+  const [password, setPassword] = useState('pg@123')
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
