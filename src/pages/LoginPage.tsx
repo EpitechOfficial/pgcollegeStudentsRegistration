@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, CircleAlert, Eye, EyeOff, LifeBuoy, LoaderCircle, X } from 'lucide-react'
 import type { AuthError } from '../data/auth'
-import { rememberedMatric, signIn } from '../data/auth'
+import { signIn } from '../data/auth'
+// import { rememberedMatric, signIn } from '../data/auth'
 import { COLLEGE, CURRENT_SESSION } from '../data/portal'
 
 function FieldError({ id, message }: { id: string; message: string }) {
