@@ -21,6 +21,10 @@ export default function DashboardPage() {
     navigate('/', { replace: true })
   }, [navigate])
 
+  const handleOpenRegisterCourses = useCallback(() => {
+    navigate('/dashboard/register-courses')
+  }, [navigate])
+
   return (
     <div className="flex min-h-screen flex-col bg-[#F5F7F9]">
       {/* Top Header - No Sidebar */}
@@ -42,6 +46,7 @@ export default function DashboardPage() {
             sections={SERVICE_SECTIONS}
             infoLocked={infoLocked}
             onToggleInfoLock={toggleInfoLock}
+            onOpenRegisterCourses={handleOpenRegisterCourses}
           />
         </div>
       </main>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import RegisterCoursesPage from './pages/RegisterCoursesPage'
 import { restoreSession } from './data/auth'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -21,6 +22,14 @@ export default function App() {
           element={
             <RequireAuth>
               <DashboardPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/dashboard/register-courses"
+          element={
+            <RequireAuth>
+              <RegisterCoursesPage />
             </RequireAuth>
           }
         />

@@ -20,7 +20,7 @@ import {
   Stethoscope,
   Upload,
 } from 'lucide-react'
-import type { FinancialSummary, ServiceSection, Student } from '../types'
+import type { CourseOption, FinancialSummary, ServiceSection, Student } from '../types'
 
 /* ------------------------------------------------------------------ */
 /* Institutional identity — official contacts of the Postgraduate      */
@@ -92,7 +92,7 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
     title: 'Course Form',
     note: 'Course registration for the current session',
     services: [
-      { id: 'register-courses', label: 'Register Courses', icon: BookOpen },
+      { id: 'register-courses', label: 'Register Courses', icon: BookOpen, action: 'register-courses' },
       { id: 'print-course-form', label: 'Print Course Form', icon: Printer },
       { id: 'lock-up', label: 'Lock Up', icon: Lock, action: 'lock-info' },
     ],
@@ -131,6 +131,25 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
     ],
   },
 ]
+
+/* ------------------------------------------------------------------ */
+/* Course catalogue — the courses a student may register this session,  */
+/* mirroring the approved programme outline for M.Sc. Economics.        */
+/* ------------------------------------------------------------------ */
+export const COURSE_CATALOGUE: CourseOption[] = [
+  { code: 'RES 701', title: 'Research Methodology', type: 'Required', units: 3 },
+  { code: 'STA 701', title: 'Statistical Methods', type: 'Required', units: 3 },
+  { code: 'GST 701', title: 'Academic Writing and Communication', type: 'Required', units: 2 },
+  { code: 'RES 703', title: 'Research Ethics', type: 'Elective', units: 2 },
+  { code: 'RES 705', title: 'Qualitative Research Methods', type: 'Elective', units: 3 },
+  { code: 'RES 707', title: 'Quantitative Research Methods', type: 'Elective', units: 3 },
+]
+
+/** Courses pre-selected when the registration screen opens. */
+export const DEFAULT_SELECTED_CODES: string[] = ['RES 701', 'STA 701', 'GST 701', 'RES 703']
+
+/** The minimum number of units a postgraduate student must register each session. */
+export const MIN_REGISTRATION_UNITS = 10
 
 export const TOTAL_SERVICE_COUNT = SERVICE_SECTIONS.reduce(
   (total, section) => total + section.services.length,
