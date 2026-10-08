@@ -25,8 +25,21 @@ export interface PortalService {
   icon: LucideIcon
   /** Service is currently locked on the portal (not accessible) */
   locked?: boolean
-  /** Interactive action bound to this service (e.g. Lock Up toggles the student info lock) */
-  action?: 'lock-info'
+  /**
+   * Interactive action bound to this service:
+   * - `lock-info` toggles the student info lock (Lock Up)
+   * - `register-courses` opens the course registration screen
+   */
+  action?: 'lock-info' | 'register-courses'
+}
+
+export type CourseType = 'Required' | 'Elective'
+
+export interface CourseOption {
+  code: string
+  title: string
+  type: CourseType
+  units: number
 }
 
 export interface ServiceSection {

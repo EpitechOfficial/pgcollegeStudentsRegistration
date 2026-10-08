@@ -42,6 +42,8 @@ interface ServiceSectionsProps {
   /** Whether the student's info is currently locked via the Lock Up service */
   infoLocked: boolean
   onToggleInfoLock: () => void
+  /** Opens the course registration screen (Register Courses service) */
+  onOpenRegisterCourses: () => void
 }
 
 /** Column count for the current viewport — mirrors the 1 / 2 / 3 column breakpoints. */
@@ -92,6 +94,7 @@ export default function ServiceSections({
   sections,
   infoLocked,
   onToggleInfoLock,
+  onOpenRegisterCourses,
 }: ServiceSectionsProps) {
   // All sections start collapsed — the user opens each one manually
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
@@ -240,6 +243,7 @@ export default function ServiceSections({
                           const ServiceIcon = service.icon
                           const isLocked = service.locked
                           const isLockAction = service.action === 'lock-info'
+                          const isRegisterAction = service.action === 'register-courses'
 
                           // Lock Up binds to the shared student-info lock state
                           const handleLockUpClick = () => {
