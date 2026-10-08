@@ -8,13 +8,14 @@ import ServiceSections from '../components/ServiceSections'
 import SupportChat from '../components/SupportChat'
 import { signOut } from '../data/auth'
 import { FINANCIALS, SERVICE_SECTIONS } from '../data/portal'
+import { infoIsLocked, setInfoLocked as persistInfoLock } from '../data/courseRegistration'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
 
   // Student info lock — toggled by the Lock Up service in the Course Form section
-  const [infoLocked, setInfoLocked] = useState(false)
-  const toggleInfoLock = useCallback(() => setInfoLocked((prev) => !prev), [])
+  const [infoLocked, setInfoLocked] = useState(infoIsLocked)
+  const toggleInfoLock = useCallback(() => setInfoLocked((prev) => { persistInfoLock(!prev); return !prev }), [])
 
   const handleLogout = useCallback(() => {
     signOut()
@@ -28,9 +29,7 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen flex-col bg-[#F5F7F9]">
       {/* Top Header - No Sidebar */}
-      <div className="sticky top-3 z-30 mt-4 px-3 sm:top-4 sm:mt-5 sm:px-5">
         <PortalHeader onLogout={handleLogout} />
-      </div>
 
       {/* Main Content Area */}
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">

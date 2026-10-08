@@ -30,7 +30,8 @@ export interface PortalService {
    * - `lock-info` toggles the student info lock (Lock Up)
    * - `register-courses` opens the course registration screen
    */
-  action?: 'lock-info' | 'register-courses'
+  action?: 'lock-info' | 'register-courses' | 'external-link'
+  externalUrl?: string
 }
 
 export type CourseType = 'Required' | 'Elective'

@@ -1,5 +1,15 @@
 import type { Credentials } from '../types'
 
+export async function requestPasswordReset(email: string, applicationNumber: string, signal: AbortSignal): Promise<void> {
+  const endpoint = import.meta.env.VITE_PASSWORD_RESET_URL
+  if (!endpoint) throw new Error('Password recovery is not connected yet. Please contact the Information Unit.')
+  const response = await fetch(endpoint, {
+    method: 'POST', signal, headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ email: email.trim(), ...(applicationNumber.trim() ? { applicationNumber: applicationNumber.trim() } : {}) }),
+  })
+  if (!response.ok) throw new Error(response.status === 429 ? 'Too many requests. Please try again later.' : 'Unable to request a password reset. Please try again.')
+}
+
 /**
  * Demo credential for the mock sign-in flow. Replace with the real
  * authentication endpoint call when wiring to the live API.

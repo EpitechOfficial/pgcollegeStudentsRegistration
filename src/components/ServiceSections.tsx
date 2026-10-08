@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronRight,
   CreditCard,
+  ExternalLink,
   FileText,
   GraduationCap,
   HeartPulse,
@@ -26,6 +27,7 @@ import PassportDialog from './PassportDialog'
 import WalletDepositDialog from './WalletDepositDialog'
 import WalletPaymentDialog from './WalletPaymentDialog'
 import WalletHistoryDialog from './WalletHistoryDialog'
+import CourseFormsDialog from './CourseFormsDialog'
 import { REACTIVATION_FORM_URL } from '../data/reactivation'
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
@@ -113,6 +115,7 @@ export default function ServiceSections({
   const [resultOpen, setResultOpen] = useState(false)
   const [feeScheduleOpen, setFeeScheduleOpen] = useState(false)
   const [receiptsOpen, setReceiptsOpen] = useState(false)
+  const [courseFormsOpen, setCourseFormsOpen] = useState(false)
   const [paymentRecordOpen, setPaymentRecordOpen] = useState(false)
   const [medicalOpen, setMedicalOpen] = useState(false)
   const [passportOpen, setPassportOpen] = useState(false)
@@ -244,6 +247,16 @@ export default function ServiceSections({
                           const isLocked = service.locked
                           const isLockAction = service.action === 'lock-info'
                           const isRegisterAction = service.action === 'register-courses'
+                          if (service.action === 'external-link') {
+                            let href = ''
+                            try {
+                              const url = new URL(service.externalUrl || '')
+                              if (['https:', 'http:'].includes(url.protocol)) href = url.href
+                            } catch { /* Destination is not configured yet. */ }
+                            const content = <><span className="flex items-center gap-2.5"><ServiceIcon className="h-4 w-4 shrink-0 text-[#1B3764]" aria-hidden="true" /><span className="font-medium">{service.label}</span></span><ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" /></>
+                            const className = 'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-xs text-[#212529] transition-colors'
+                            return <li key={service.id}>{href && !isLocked ? <a href={href} target="_blank" rel="noopener noreferrer" className={`${className} hover:bg-navy/5`} aria-label={`${service.label} (opens in a new tab)`}>{content}</a> : <button type="button" disabled title={isLocked ? 'Service is locked' : 'Link is not configured yet'} className={`${className} cursor-not-allowed opacity-60`}>{content}</button>}</li>
+                          }
 
                           // Lock Up binds to the shared student-info lock state
                           const handleLockUpClick = () => {
@@ -259,7 +272,7 @@ export default function ServiceSections({
                             <li key={service.id}>
                               <button
                                 type="button"
-                                onClick={isLockAction ? handleLockUpClick : service.id === 'generate-invoice' ? () => setSchoolFeesOpen(true) : service.id === 'suspend-programme' ? () => setSuspensionOpen(true) : service.id === 'reactivation-form' ? downloadReactivationForm : service.id === 'clearance-form' ? () => setClearanceOpen(true) : service.id === 'result-notification' ? () => setResultOpen(true) : service.id === 'schedule-of-fees' ? () => setFeeScheduleOpen(true) : service.id === 'print-receipt' ? () => setReceiptsOpen(true) : service.id === 'history' ? () => setWalletHistoryOpen(true) : service.id === 'make-payment' ? () => setWalletPaymentOpen(true) : service.id === 'deposit' ? () => setDepositOpen(true) : service.id === 'upload-passport' ? () => setPassportOpen(true) : service.id === 'edit-medical' ? () => setMedicalOpen(true) : service.id === 'payment-record' ? () => setPaymentRecordOpen(true) : service.id === 'financial-clearance' ? () => setFinancialClearanceOpen(true) : undefined}
+                                onClick={isLockAction ? handleLockUpClick : isRegisterAction ? onOpenRegisterCourses : service.id === 'generate-invoice' ? () => setSchoolFeesOpen(true) : service.id === 'suspend-programme' ? () => setSuspensionOpen(true) : service.id === 'reactivation-form' ? downloadReactivationForm : service.id === 'clearance-form' ? () => setClearanceOpen(true) : service.id === 'result-notification' ? () => setResultOpen(true) : service.id === 'schedule-of-fees' ? () => setFeeScheduleOpen(true) : service.id === 'print-course-form' ? () => setCourseFormsOpen(true) : service.id === 'print-receipt' ? () => setReceiptsOpen(true) : service.id === 'history' ? () => setWalletHistoryOpen(true) : service.id === 'make-payment' ? () => setWalletPaymentOpen(true) : service.id === 'deposit' ? () => setDepositOpen(true) : service.id === 'upload-passport' ? () => setPassportOpen(true) : service.id === 'edit-medical' ? () => setMedicalOpen(true) : service.id === 'payment-record' ? () => setPaymentRecordOpen(true) : service.id === 'financial-clearance' ? () => setFinancialClearanceOpen(true) : undefined}
                                 disabled={isLocked}
                                 aria-disabled={isLocked}
                                 aria-pressed={isLockAction ? infoLocked : undefined}
@@ -340,6 +353,7 @@ export default function ServiceSections({
       {passportOpen && <PassportDialog locked={infoLocked} onClose={() => setPassportOpen(false)} />}
       {medicalOpen && <MedicalRecordDialog locked={infoLocked} onClose={() => setMedicalOpen(false)} />}
       {paymentRecordOpen && <ReceiptPaymentsDialog history onClose={() => setPaymentRecordOpen(false)} />}
+      {courseFormsOpen && <CourseFormsDialog onClose={() => setCourseFormsOpen(false)} />}
       {receiptsOpen && <ReceiptPaymentsDialog onClose={() => setReceiptsOpen(false)} />}
       {financialClearanceOpen && <FinancialClearanceDialog onClose={() => setFinancialClearanceOpen(false)} onPayOutstanding={() => { setFinancialClearanceOpen(false); setSchoolFeesOpen(true) }} />}
 

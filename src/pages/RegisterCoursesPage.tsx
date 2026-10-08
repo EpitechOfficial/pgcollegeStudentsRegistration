@@ -5,14 +5,20 @@ import {
   BookOpen,
   CircleCheck,
   CircleCheckBig,
+  LoaderCircle,
   Printer,
   Save,
   Search,
 } from 'lucide-react'
 import PortalHeader from '../components/PortalHeader'
+import WelcomeBanner from '../components/WelcomeBanner'
 import PortalFooter from '../components/PortalFooter'
 import SupportChat from '../components/SupportChat'
 import { signOut } from '../data/auth'
+import { loadCourseRegistration, saveCourseRegistration } from '../data/courseRegistration'
+import CourseFormsDialog from '../components/CourseFormsDialog'
+import FlashToast from '../components/FlashToast'
+import { useFlashToast } from '../components/useFlashToast'
 import {
   COLLEGE,
   COURSE_CATALOGUE,
@@ -20,14 +26,20 @@ import {
   DEFAULT_SELECTED_CODES,
   STUDENT,
 } from '../data/portal'
-import type { CourseType } from '../types'
+import type { CourseOption, CourseType } from '../types'
 
 type TypeFilter = 'All' | CourseType
 
 const TYPE_FILTERS: TypeFilter[] = ['All', 'Required', 'Elective']
+const secondary = 'inline-flex items-center justify-center gap-2 rounded-xl border border-navy/20 bg-navy/5 px-4 py-2.5 text-xs font-semibold text-navy hover:bg-navy/10 disabled:opacity-50'
+
 
 export default function RegisterCoursesPage() {
   const navigate = useNavigate()
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [])
 
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('All')
@@ -35,25 +47,28 @@ export default function RegisterCoursesPage() {
     () => new Set(DEFAULT_SELECTED_CODES),
   )
   const [confirmed, setConfirmed] = useState(false)
-  const [feedback, setFeedback] = useState<string | null>(null)
-  const feedbackTimer = useRef<number | null>(null)
-
-  // Clear the feedback timer if the page unmounts mid-notification
+  const [catalogue, setCatalogue] = useState<CourseOption[]>(COURSE_CATALOGUE)
+  const [minimumUnits, setMinimumUnits] = useState(10)
+  const [locked, setLocked] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const [action, setAction] = useState<'draft' | 'confirm' | null>(null)
+  const [printOpen, setPrintOpen] = useState(false)
+  const busy = useRef(false)
+  const controllerRef = useRef<AbortController | null>(null)
+  const { toast, showToast, dismissToast } = useFlashToast()
   useEffect(() => {
-    return () => {
-      if (feedbackTimer.current !== null) window.clearTimeout(feedbackTimer.current)
-    }
-  }, [])
-
-  const showFeedback = useCallback((message: string) => {
-    setFeedback(message)
-    if (feedbackTimer.current !== null) window.clearTimeout(feedbackTimer.current)
-    feedbackTimer.current = window.setTimeout(() => setFeedback(null), 3000)
-  }, [])
-
+    const controller = new AbortController()
+    void loadCourseRegistration(controller.signal).then((record) => {
+      if (!controller.signal.aborted) { setCatalogue(record.courses); setSelected(new Set(record.selectedCodes)); setConfirmed(record.confirmed); setLocked(record.locked); setMinimumUnits(record.minimumUnits) }
+    }).catch(() => { if (!controller.signal.aborted) { setLoadError(true); showToast('error', 'Unable to load course registration. Please try again.') } })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => { controller.abort(); controllerRef.current?.abort() }
+  }, [attempt, showToast])
   const visibleCourses = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return COURSE_CATALOGUE.filter((course) => {
+    return catalogue.filter((course) => {
       const matchesType = typeFilter === 'All' || course.type === typeFilter
       const matchesQuery =
         needle.length === 0 ||
@@ -61,16 +76,17 @@ export default function RegisterCoursesPage() {
         course.title.toLowerCase().includes(needle)
       return matchesType && matchesQuery
     })
-  }, [query, typeFilter])
+  }, [query, typeFilter, catalogue])
 
   const selectedCourses = useMemo(
-    () => COURSE_CATALOGUE.filter((course) => selected.has(course.code)),
-    [selected],
+    () => catalogue.filter((course) => selected.has(course.code)),
+    [selected, catalogue],
   )
   const totalUnits = selectedCourses.reduce((sum, course) => sum + course.units, 0)
 
   /** Toggling invalidates a previous confirmation — the selection changed. */
   const toggleCourse = useCallback((code: string) => {
+    if (locked || loading || loadError || busy.current) return
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(code)) {
@@ -81,26 +97,23 @@ export default function RegisterCoursesPage() {
       return next
     })
     setConfirmed(false)
-  }, [])
+  }, [locked, loading, loadError])
 
-  const handleConfirm = useCallback(() => {
-    if (selectedCourses.length === 0) {
-      showFeedback('Select at least one course before confirming.')
-      return
-    }
-    setConfirmed(true)
-    showFeedback(`Course selection confirmed for ${CURRENT_SESSION}.`)
-  }, [selectedCourses.length, showFeedback])
-
-  const handleSaveDraft = useCallback(() => {
-    showFeedback('Draft saved on this device.')
-  }, [showFeedback])
-
-  const handlePrint = useCallback(() => {
-    showFeedback('Preparing the course form preview…')
-    window.print()
-  }, [showFeedback])
-
+  async function save(confirm: boolean) {
+    if (busy.current || locked || loading || loadError) return
+    if (confirm && (selectedCourses.length === 0 || totalUnits < minimumUnits)) { showToast('error', `Select at least ${minimumUnits} units before confirming.`); return }
+    busy.current = true; setAction(confirm ? 'confirm' : 'draft')
+    const controller = new AbortController(); controllerRef.current = controller
+    try {
+      await saveCourseRegistration(selectedCourses, confirm, controller.signal)
+      if (!controller.signal.aborted) { setConfirmed(confirm); showToast('success', import.meta.env.VITE_COURSE_REGISTRATION_URL ? confirm ? 'Course registration confirmed.' : 'Draft saved.' : confirm ? 'Selection saved on this device as a preview.' : 'Draft saved on this device.') }
+    } catch (error) { if (!controller.signal.aborted) showToast('error', error instanceof Error ? error.message : 'Unable to save course registration.') }
+    finally { busy.current = false; if (!controller.signal.aborted) setAction(null) }
+  }
+  function handlePrint() {
+    if (!confirmed) { showToast('error', 'Confirm your selection before printing.'); return }
+    setPrintOpen(true)
+  }
   const handleLogout = useCallback(() => {
     signOut()
     navigate('/', { replace: true })
@@ -109,19 +122,21 @@ export default function RegisterCoursesPage() {
   return (
     <div className="flex min-h-screen flex-col bg-[#F5F7F9]">
       {/* Top Header - No Sidebar */}
-      <div className="px-3 pt-4 sm:px-5 sm:pt-5">
         <PortalHeader onLogout={handleLogout} />
-      </div>
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* Back to the dashboard */}
         <Link
           to="/dashboard"
-          className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#495057] transition-colors hover:text-[#0A2B4F]"
+          className={`${secondary} mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#495057] transition-colors hover:text-[#0A2B4F]`}
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Back to dashboard
         </Link>
+
+        <div className="mb-6">
+          <WelcomeBanner greeting={false} />
+        </div>
 
         {/* Page header — title/subtitle left, status chip right */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -153,6 +168,11 @@ export default function RegisterCoursesPage() {
           </span>
         </div>
 
+        {loading && <p role="status" className="mb-4 flex items-center gap-2 text-sm text-navy"><LoaderCircle className="h-4 w-4 animate-spin" />Loading registration…</p>}
+        {loadError && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">Unable to load course registration. <button type="button" className="font-semibold underline" onClick={() => { setLoading(true); setLoadError(false); setAttempt((value) => value + 1) }}>Retry</button></div>}
+        {locked && <p className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Student information is locked. Course editing is disabled.</p>}
+        <p className="mb-4 text-xs text-slate-500">Minimum registration: {minimumUnits} units.
+          {!import.meta.env.VITE_COURSE_REGISTRATION_URL && ' Backend is not connected; selections are saved on this device only.'}</p>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
           {/* ==================== Available courses ==================== */}
           <section
@@ -238,6 +258,7 @@ export default function RegisterCoursesPage() {
                           <input
                             type="checkbox"
                             checked={isSelected}
+                            disabled={locked || loading || loadError || !!action}
                             onChange={() => toggleCourse(course.code)}
                             aria-label={`Select ${course.code} ${course.title}`}
                             className="h-4 w-4 cursor-pointer rounded border-[#CCCCCC] text-[#0A2B4F] focus:ring-2 focus:ring-[#0A2B4F]/25"
@@ -321,6 +342,7 @@ export default function RegisterCoursesPage() {
                   <button
                     type="button"
                     onClick={() => toggleCourse(course.code)}
+                    disabled={locked || loading || loadError || !!action}
                     aria-label={`Remove ${course.code} ${course.title}`}
                     className="text-xs font-medium text-[#495057] transition-colors hover:text-red-600"
                   >
@@ -340,26 +362,30 @@ export default function RegisterCoursesPage() {
             <div className="space-y-2.5 p-4 sm:p-5">
               <button
                 type="button"
-                onClick={handleConfirm}
-                disabled={selectedCourses.length === 0}
+                onClick={() => void save(true)}
+                disabled={selectedCourses.length === 0 || loading || loadError || locked || !!action || confirmed}
+                aria-busy={action === 'confirm'}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0A2B4F] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#12335A] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <CircleCheckBig className="h-4 w-4 text-[#FFBB00]" aria-hidden="true" />
-                Confirm selection
+                {action === 'confirm' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CircleCheckBig className="h-4 w-4 text-[#FFBB00]" aria-hidden="true" />}
+                {action === 'confirm' ? 'Confirming…' : 'Confirm selection'}
               </button>
 
               <button
                 type="button"
-                onClick={handleSaveDraft}
+                onClick={() => void save(false)}
+                disabled={loading || loadError || locked || !!action}
+                aria-busy={action === 'draft'}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-white text-sm font-semibold text-[#212529] transition-colors hover:border-[#0A2B4F]/30 hover:bg-slate-50"
               >
-                <Save className="h-4 w-4 text-[#1B3764]" aria-hidden="true" />
-                Save draft
+                {action === 'draft' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 text-[#1B3764]" aria-hidden="true" />}
+                {action === 'draft' ? 'Saving…' : 'Save draft'}
               </button>
 
               <button
                 type="button"
                 onClick={handlePrint}
+                disabled={!confirmed || loading || loadError || !!action}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-white text-sm font-semibold text-[#212529] transition-colors hover:border-[#0A2B4F]/30 hover:bg-slate-50"
               >
                 <Printer className="h-4 w-4 text-[#1B3764]" aria-hidden="true" />
@@ -367,7 +393,7 @@ export default function RegisterCoursesPage() {
               </button>
 
               <p className="pt-1 text-2xs leading-relaxed text-[#6C757D]">
-                Printed output is a preview, not an official registration form.
+                {!import.meta.env.VITE_COURSE_REGISTRATION_URL ? 'Printed output is a preview, not an official registration form.' : 'Print your saved registration after confirmation.'}
               </p>
             </div>
           </section>
@@ -390,18 +416,8 @@ export default function RegisterCoursesPage() {
       {/* Floating support chat — Information Unit */}
       <SupportChat />
 
-      {/* Feedback toast (confirm / save / print) */}
-      <div
-        aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4"
-      >
-        {feedback && (
-          <div className="flex items-center gap-2 rounded-xl bg-[#0A2B4F] px-4 py-3 text-xs font-semibold text-white shadow-2xl">
-            <CircleCheck className="h-4 w-4 text-[#FFBB00]" aria-hidden="true" />
-            <span>{feedback}</span>
-          </div>
-        )}
-      </div>
+      <FlashToast toast={toast} onDismiss={dismissToast} />
+      {printOpen && <CourseFormsDialog onClose={() => setPrintOpen(false)} initialRecord={import.meta.env.VITE_COURSE_REGISTRATION_URL ? undefined : { id: 'selection-preview', applicationNumber: STUDENT.applicationNumber, session: CURRENT_SESSION, registeredAt: new Date().toISOString(), courses: selectedCourses, student: { surname: STUDENT.name.split(' ')[0], otherNames: STUDENT.name.split(' ').slice(1).join(' '), matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy } }} />}
     </div>
   )
 }

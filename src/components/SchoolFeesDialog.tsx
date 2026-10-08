@@ -166,7 +166,7 @@ export default function SchoolFeesDialog({ onClose }: { onClose: () => void }) {
               <iframe ref={previewRef} onLoad={() => setPreviewReady(true)} title="School fee invoice preview" srcDoc={invoiceHtml} className="school-fees-invoice-frame w-full border-x border-slate-200 bg-white" />
             </div>
             <div className="school-fees-invoice-footer flex flex-col gap-3 border-t border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-              <p className="max-w-xs text-xs text-slate-500">Demo invoice. Online payment is not connected yet.</p>
+              {/* <p className="max-w-xs text-xs text-slate-500">Demo invoice. Online payment is not connected yet.</p> */}
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                 <button type="button" disabled={!!loading} aria-busy={loading === 'download'} onClick={() => void runAction('download', downloadInvoice, 'Unable to prepare the download. Please try again.')} aria-label={loading === 'download' ? 'Preparing invoice download' : 'Download invoice as HTML'} title="Download invoice as HTML" className={secondaryButtonClass}>{loading === 'download' ? spinner : <Download className="h-4 w-4" />}</button>
                 <button type="button" disabled={!!loading || !previewReady} aria-busy={loading === 'print'} onClick={() => void runAction('print', () => {

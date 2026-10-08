@@ -150,12 +150,14 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
     title: 'Examination Process',
     note: 'Thesis title and doctoral administration',
     services: [
-      { id: 'thesis-title', label: 'Registration of Title of Thesis', icon: FileText },
-      { id: 'track-thesis', label: 'Track Registration of Title of Thesis', icon: ClipboardList },
-      { id: 'print-thesis', label: 'Print Registration of Title of Thesis', icon: Printer },
-      { id: 'conversion', label: 'M.Phil/Ph.D to Ph.D Conversion', icon: GraduationCap },
-      { id: 'correction', label: 'Certification of Correction of Thesis', icon: ScanEye },
-      { id: 'doctoral-academy', label: 'Doctoral Academy', icon: RefreshCw },
+      { id: 'thesis-title', label: 'Registration of Title of Thesis', icon: FileText, action: 'external-link', externalUrl: 'https://app.pgcollege.ui.edu.ng/thesis/student/' },
+      // Applicant-specific links supplied for the preview. Live sessions must receive their own URLs from the backend.
+      { id: 'track-thesis', label: 'Track Registration of Title of Thesis', icon: ClipboardList, action: 'external-link', externalUrl: 'https://app.pgcollege.ui.edu.ng/thesis/student/track.php?app=NTA0Nzc2MjM=' },
+      { id: 'print-thesis', label: 'Print Registration of Title of Thesis', icon: Printer, action: 'external-link', externalUrl: 'https://app.pgcollege.ui.edu.ng/thesis/student/print-letter.php?app=NTA0Nzc2MjM=' },
+      // The backend must generate a fresh conversion URL, including its timestamp and token.
+      { id: 'conversion', label: 'M.Phil/Ph.D to Ph.D Conversion', icon: GraduationCap, action: 'external-link', externalUrl: 'https://pgcollege.ui.edu.ng/mphilconversion/upload_conversion_proposal.php?appno=UEdTMjYzMDEzNTQ4MDU4NjM%3D&ts=1791462556&tok=81ca42b0acd4184de9a74f61954ed9fe9171aca7d3eba4821de0ab17353c8c0a&return_url=https%3A%2F%2Fregistration.pgcollege.ui.edu.ng%2Freg%2Fmenunew.php' },
+      { id: 'correction', label: 'Certification of Correction of Thesis', icon: ScanEye, action: 'external-link', externalUrl: 'https://apps.pgcollege.ui.edu.ng/pgforms/correction_fac.jsp' },
+      { id: 'doctoral-academy', label: 'Doctoral Academy', icon: RefreshCw, action: 'external-link', externalUrl: 'https://pgcollege-lms.vercel.app/' },
     ],
   },
   {

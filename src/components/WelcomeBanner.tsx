@@ -1,7 +1,8 @@
 import { Calendar, GraduationCap, User } from 'lucide-react'
 import { CURRENT_SESSION, STUDENT } from '../data/portal'
 
-export default function WelcomeBanner() {
+export default function WelcomeBanner({ greeting = true }: { greeting?: boolean }) {
+  const Heading = greeting ? 'h1' : 'h2'
   return (
     <section
       aria-label="Student overview"
@@ -17,9 +18,9 @@ export default function WelcomeBanner() {
             <User className="h-6 w-6 sm:h-7 sm:w-7" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-[#212529] sm:text-xl">
-              Welcome, {STUDENT.name.split(' ')[0]}
-            </h1>
+            <Heading className="text-lg font-bold tracking-tight text-[#212529] sm:text-xl">
+              {greeting ? `Welcome, ${STUDENT.name.split(' ')[0]}` : STUDENT.name}
+            </Heading>
             <p className="mt-0.5 text-xs text-[#495057]">
               {STUDENT.programme} • {STUDENT.faculty}
             </p>

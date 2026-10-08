@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ChevronDown, CircleAlert, Eye, EyeOff, LifeBuoy, LoaderCircle, X } from 'lucide-react'
 import type { AuthError } from '../data/auth'
 import { signIn } from '../data/auth'
 // import { rememberedMatric, signIn } from '../data/auth'
 import { COLLEGE, CURRENT_SESSION } from '../data/portal'
+import ForgotPasswordForm from './ForgotPasswordForm'
 
 function FieldError({ id, message }: { id: string; message: string }) {
   return (
@@ -26,7 +27,7 @@ const FAQS: ReadonlyArray<{ question: string; answer: string }> = [
   {
     question: "I've forgotten my password. What should I do?",
     answer:
-      'Choose Forgot password? to send a reset request to the Information Unit. Include your full name, application number and programme so it can be handled quickly.',
+      'Choose Forgot password? and enter your registered email address. You can also include your application number.',
   },
   {
     question: 'Is registration open for the current session?',
@@ -38,7 +39,7 @@ const FAQS: ReadonlyArray<{ question: string; answer: string }> = [
   },
 ]
 
-export default function LoginPage() {
+export default function LoginPage({ passwordReset = false }: { passwordReset?: boolean }) {
   const navigate = useNavigate()
   // const [matric, setMatric] = useState(rememberedMatric())
   const [matric, setMatric] = useState('PG123')
@@ -143,7 +144,7 @@ export default function LoginPage() {
           </section>
 
           {/* ==================== RIGHT: Sign In Card ==================== */}
-          <section
+          {passwordReset ? <ForgotPasswordForm /> : <section
             aria-label="Sign in"
             className="mx-4 flex flex-col justify-center rounded-[32px] bg-white p-6 shadow-2xl sm:mx-0 sm:rounded-none sm:bg-transparent sm:p-0 sm:px-8 sm:py-8 sm:shadow-none lg:px-12"
           >
@@ -156,7 +157,7 @@ export default function LoginPage() {
                   className="h-full w-full object-contain drop-shadow-sm"
                 />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-[#FFBB00] sm:text-3xl">
+              <h1 className="text-2xl font-bold tracking-tight text-[#0a2b4f] sm:text-3xl">
                 Registration Portal
               </h1>
               <p className="mt-1 text-sm text-[#495057]">
@@ -261,12 +262,12 @@ export default function LoginPage() {
                   />
                   <span>Remember for 30 days</span>
                 </label>
-                <a
-                  href={`mailto:${COLLEGE.email}?subject=Portal%20Password%20Reset%20Request`}
+                <Link
+                  to="/forgot-password"
                   className="font-medium text-[#495057] transition-colors hover:text-[#0A2B4F] hover:underline"
                 >
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               {/* Primary Sign In Button */}
@@ -297,7 +298,7 @@ export default function LoginPage() {
                 Contact Help Desk
               </a>
             </p>
-          </section>
+          </section>}
         </div>
       </main>
       {/* FAQ dialog — glass card over a dimmed, blurred page */}
