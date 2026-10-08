@@ -30,7 +30,7 @@ export default function WelcomeBanner() {
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <div className="inline-flex items-center gap-1.5 rounded-xl bg-slate-50 border border-[#E5E7EB] px-3 py-1.5 text-xs">
             <GraduationCap className="h-3.5 w-3.5 text-[#1B3764]" aria-hidden="true" />
-            <span className="font-semibold text-[#212529]">{STUDENT.matric}</span>
+            <span className="font-semibold text-[#212529]">{STUDENT.applicationNumber}</span>
           </div>
 
           <div className="inline-flex items-center gap-1.5 rounded-xl bg-[#0A2B4F]/5 border border-[#0A2B4F]/10 px-3 py-1.5 text-xs">

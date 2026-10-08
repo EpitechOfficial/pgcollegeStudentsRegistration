@@ -13,6 +13,20 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ServiceSection } from '../types'
+import SchoolFeesDialog from './SchoolFeesDialog'
+import SuspensionDialog from './SuspensionDialog'
+import ReactivationDialog from './ReactivationDialog'
+import AdmissionClearanceDialog from './AdmissionClearanceDialog'
+import NotificationResultDialog from './NotificationResultDialog'
+import FeeScheduleDialog from './FeeScheduleDialog'
+import ReceiptPaymentsDialog from './ReceiptPaymentsDialog'
+import FinancialClearanceDialog from './FinancialClearanceDialog'
+import MedicalRecordDialog from './MedicalRecordDialog'
+import PassportDialog from './PassportDialog'
+import WalletDepositDialog from './WalletDepositDialog'
+import WalletPaymentDialog from './WalletPaymentDialog'
+import WalletHistoryDialog from './WalletHistoryDialog'
+import { REACTIVATION_FORM_URL } from '../data/reactivation'
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
   process: FileText,
@@ -89,6 +103,20 @@ export default function ServiceSections({
   })
 
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [schoolFeesOpen, setSchoolFeesOpen] = useState(false)
+  const [suspensionOpen, setSuspensionOpen] = useState(false)
+  const [reactivationOpen, setReactivationOpen] = useState(false)
+  const [clearanceOpen, setClearanceOpen] = useState(false)
+  const [resultOpen, setResultOpen] = useState(false)
+  const [feeScheduleOpen, setFeeScheduleOpen] = useState(false)
+  const [receiptsOpen, setReceiptsOpen] = useState(false)
+  const [paymentRecordOpen, setPaymentRecordOpen] = useState(false)
+  const [medicalOpen, setMedicalOpen] = useState(false)
+  const [passportOpen, setPassportOpen] = useState(false)
+  const [depositOpen, setDepositOpen] = useState(false)
+  const [walletPaymentOpen, setWalletPaymentOpen] = useState(false)
+  const [walletHistoryOpen, setWalletHistoryOpen] = useState(false)
+  const [financialClearanceOpen, setFinancialClearanceOpen] = useState(false)
   const feedbackTimer = useRef<number | null>(null)
 
   // Clear pending feedback timers on unmount
@@ -123,6 +151,13 @@ export default function ServiceSections({
     })
   }
 
+  function downloadReactivationForm() {
+    const link = document.createElement('a')
+    link.href = REACTIVATION_FORM_URL
+    link.download = 'reactivation-form.doc'
+    link.click()
+  }
+
   const columnCount = useColumnCount()
   const columns = buildColumns(sections, columnCount)
 
@@ -150,7 +185,9 @@ export default function ServiceSections({
                 <article
                   id={`section-${section.id}`}
                   key={section.id}
-                  className="group overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm transition-all hover:border-[#1B3764]/30 hover:shadow-md"
+                  className={`group overflow-hidden rounded-2xl border bg-white transition-all hover:border-[#ffbb00]/70 hover:shadow-md ${
+                    isExpanded ? 'border-[#ffbb00]/70 shadow-md' : 'border-[#E5E7EB] shadow-sm'
+                  }`}
                 >
                   {/* Card Header with Auto-Dropdown toggle */}
                   <button
@@ -158,11 +195,15 @@ export default function ServiceSections({
                     onClick={() => toggleSection(section.id)}
                     aria-expanded={isExpanded}
                     aria-controls={`content-${section.id}`}
-                    className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50/70"
+                    className={`flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50/70 ${
+                      isExpanded ? 'bg-slate-50/70' : ''
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <span
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#0A2B4F]/5 text-[#0A2B4F] transition-colors group-hover:bg-[#0A2B4F] group-hover:text-white"
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors group-hover:bg-[#0A2B4F] group-hover:text-white ${
+                          isExpanded ? 'bg-[#0A2B4F] text-white' : 'bg-[#0A2B4F]/5 text-[#0A2B4F]'
+                        }`}
                         aria-hidden="true"
                       >
                         <SectionIcon className="h-5 w-5" />
@@ -214,7 +255,7 @@ export default function ServiceSections({
                             <li key={service.id}>
                               <button
                                 type="button"
-                                onClick={isLockAction ? handleLockUpClick : undefined}
+                                onClick={isLockAction ? handleLockUpClick : service.id === 'generate-invoice' ? () => setSchoolFeesOpen(true) : service.id === 'suspend-programme' ? () => setSuspensionOpen(true) : service.id === 'reactivation-form' ? downloadReactivationForm : service.id === 'clearance-form' ? () => setClearanceOpen(true) : service.id === 'result-notification' ? () => setResultOpen(true) : service.id === 'schedule-of-fees' ? () => setFeeScheduleOpen(true) : service.id === 'print-receipt' ? () => setReceiptsOpen(true) : service.id === 'history' ? () => setWalletHistoryOpen(true) : service.id === 'make-payment' ? () => setWalletPaymentOpen(true) : service.id === 'deposit' ? () => setDepositOpen(true) : service.id === 'upload-passport' ? () => setPassportOpen(true) : service.id === 'edit-medical' ? () => setMedicalOpen(true) : service.id === 'payment-record' ? () => setPaymentRecordOpen(true) : service.id === 'financial-clearance' ? () => setFinancialClearanceOpen(true) : undefined}
                                 disabled={isLocked}
                                 aria-disabled={isLocked}
                                 aria-pressed={isLockAction ? infoLocked : undefined}
@@ -267,6 +308,9 @@ export default function ServiceSections({
                                   />
                                 )}
                               </button>
+                              {service.id === 'reactivation-form' && !isLocked && (
+                                <button type="button" onClick={() => setReactivationOpen(true)} className="mb-2 ml-9 rounded-lg px-2 py-1 text-2xs font-semibold text-navy underline decoration-navy/30 underline-offset-4 transition-colors hover:bg-navy/5">Fill form online instead</button>
+                              )}
                             </li>
                           )
                         })}
@@ -279,6 +323,21 @@ export default function ServiceSections({
           </div>
         ))}
       </div>
+
+      {schoolFeesOpen && <SchoolFeesDialog onClose={() => setSchoolFeesOpen(false)} />}
+      {suspensionOpen && <SuspensionDialog onClose={() => setSuspensionOpen(false)} />}
+      {reactivationOpen && <ReactivationDialog onClose={() => setReactivationOpen(false)} />}
+      {clearanceOpen && <AdmissionClearanceDialog onClose={() => setClearanceOpen(false)} />}
+      {resultOpen && <NotificationResultDialog onClose={() => setResultOpen(false)} />}
+      {feeScheduleOpen && <FeeScheduleDialog onClose={() => setFeeScheduleOpen(false)} />}
+      {walletHistoryOpen && <WalletHistoryDialog onClose={() => setWalletHistoryOpen(false)} />}
+      {walletPaymentOpen && <WalletPaymentDialog onClose={() => setWalletPaymentOpen(false)} onDeposit={() => { setWalletPaymentOpen(false); setDepositOpen(true) }} />}
+      {depositOpen && <WalletDepositDialog onClose={() => setDepositOpen(false)} />}
+      {passportOpen && <PassportDialog locked={infoLocked} onClose={() => setPassportOpen(false)} />}
+      {medicalOpen && <MedicalRecordDialog locked={infoLocked} onClose={() => setMedicalOpen(false)} />}
+      {paymentRecordOpen && <ReceiptPaymentsDialog history onClose={() => setPaymentRecordOpen(false)} />}
+      {receiptsOpen && <ReceiptPaymentsDialog onClose={() => setReceiptsOpen(false)} />}
+      {financialClearanceOpen && <FinancialClearanceDialog onClose={() => setFinancialClearanceOpen(false)} onPayOutstanding={() => { setFinancialClearanceOpen(false); setSchoolFeesOpen(true) }} />}
 
       {/* Floating Feedback Notification — only for Lock Up, plain service clicks stay silent */}
       <div

@@ -2,6 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+.flash-toast {
+  animation: flash-toast-in 200ms ease-out both;
+}
+
+.flash-toast--exiting {
+  animation: flash-toast-out 200ms ease-in both;
+}
+
+@keyframes flash-toast-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes flash-toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash-toast { animation: none; }
+  .flash-toast--exiting { opacity: 0; }
+}
+
+.school-fees-dialog--invoice[open] {
+  display: flex;
+  flex-direction: column;
+  width: calc(100% - 2rem);
+  max-width: 1152px;
+  height: 92dvh;
+}
+
+.suspension-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  height: 90dvh;
+  max-height: 94dvh;
+}
+
+.school-fees-invoice-layout {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.school-fees-invoice-preview {
+  flex: 1;
+  min-height: 0;
+}
+
+.school-fees-invoice-frame {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.school-fees-invoice-footer {
+  flex-shrink: 0;
+  max-height: 35dvh;
+  overflow-y: auto;
+}
+
 @layer base {
   :root {
     color-scheme: light;

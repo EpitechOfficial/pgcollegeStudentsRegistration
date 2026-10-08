@@ -17,7 +17,6 @@ import {
   ReceiptText,
   RefreshCw,
   ScanEye,
-  Stethoscope,
   Upload,
 } from 'lucide-react'
 import type { FinancialSummary, ServiceSection, Student } from '../types'
@@ -43,7 +42,10 @@ export const CURRENT_SESSION = '2025/2026' as const
 /* ------------------------------------------------------------------ */
 export const STUDENT: Student = {
   name: 'Alake Emmanuel',
-  matric: 'PG/2024/03571',
+  matric: '03571',
+  applicationNumber: 'PGS202403571',
+  degree: 'M.Sc.',
+  modeOfStudy: 'Full-time',
   programme: 'M.Sc. Economics',
   department: 'Economics',
   faculty: 'Faculty of Economics',
@@ -52,12 +54,49 @@ export const STUDENT: Student = {
 /* ------------------------------------------------------------------ */
 /* Financial summary — the three approved metrics only                 */
 /* ------------------------------------------------------------------ */
-export const FINANCIALS: FinancialSummary = {
-  totalFees: 245_000,
-  amountPaid: 180_000,
-  outstanding: 65_000,
+export const SCHOOL_FEE_ITEMS = [
+  { description: 'Registration-Tuition Fee', amount: 30_000 },
+  { description: 'Examination Fee', amount: 50_000 },
+  { description: 'Health Insurance Premium', amount: 7_500 },
+  { description: 'Postgraduate Development Fee', amount: 10_000 },
+  { description: 'Postgraduate Regulations and Publications Fee', amount: 10_000 },
+  { description: 'I.D. Card', amount: 12_500 },
+  { description: 'U.I. Development Levy', amount: 10_000 },
+  { description: 'Faculty Registration', amount: 5_000 },
+  { description: 'Departmental Registration (Major)', amount: 7_500 },
+  { description: 'Portal Access Fees', amount: 4_000 },
+  { description: 'Students Welfare Insurance Scheme', amount: 1_000 },
+  { description: 'Library Registration', amount: 4_000 },
+  { description: 'Sports', amount: 1_000 },
+  { description: 'Student Union fee/levy', amount: 200 },
+  { description: 'Career and Counselling', amount: 1_000 },
+  { description: 'Supervision Fee', amount: 25_000 },
+  { description: 'Department Facilities Upgrade Fee', amount: 10_000 },
+  { description: 'ITeMS Internet Fee', amount: 8_000 },
+  { description: 'Induction-Oath taking fees', amount: 5_000 },
+  { description: 'Lapse Registration Charge', amount: 0 },
+  { description: 'Program Tuition/Fee (Late Registration Charge)', amount: 0 },
+  { description: 'Utility Fee', amount: 20_000 },
+]
+
+export const SCHOOL_FEE_TOTAL = SCHOOL_FEE_ITEMS.reduce((total, item) => total + item.amount, 0)
+
+export const SCHOOL_FEE_SCHEDULE = {
+  faculty: STUDENT.faculty,
+  department: STUDENT.department,
+  modeOfStudy: STUDENT.modeOfStudy,
+  degree: STUDENT.degree,
+  studentType: 'New',
   session: CURRENT_SESSION,
-  paidPercent: 73,
+  items: SCHOOL_FEE_ITEMS,
+}
+
+export const FINANCIALS: FinancialSummary = {
+  totalFees: SCHOOL_FEE_TOTAL,
+  amountPaid: 180_000,
+  outstanding: SCHOOL_FEE_TOTAL - 180_000,
+  session: CURRENT_SESSION,
+  paidPercent: Math.round(180_000 / SCHOOL_FEE_TOTAL * 100),
 }
 
 /* ------------------------------------------------------------------ */
@@ -69,7 +108,7 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
     title: 'Process',
     note: 'Registration and programme documents',
     services: [
-      { id: 'generate-invoice', label: 'Generate Invoice', icon: FileText },
+      { id: 'generate-invoice', label: 'Pay School Fees', icon: CreditCard },
       { id: 'suspend-programme', label: 'Suspend Programme', icon: Landmark },
       { id: 'reactivation-form', label: 'Download Reactivation Form', icon: Download },
       { id: 'clearance-form', label: 'Admission Clearance Form', icon: FileCheck },
@@ -99,11 +138,10 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
   },
   {
     id: 'medicals',
-    title: 'Medicals / Biodata',
+    title: 'Medicals / Passport',
     note: 'Health record and personal details',
     services: [
-      { id: 'edit-medical', label: 'Edit Medical Record', icon: HeartPulse },
-      { id: 'print-medical', label: 'Print Medical Record', icon: Stethoscope },
+      { id: 'edit-medical', label: 'Medical Record', icon: HeartPulse },
       { id: 'upload-passport', label: 'Upload Passport', icon: Upload },
     ],
   },

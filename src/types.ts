@@ -3,6 +3,9 @@ import type { LucideIcon } from 'lucide-react'
 export interface Student {
   name: string
   matric: string
+  applicationNumber: string
+  degree: string
+  modeOfStudy: string
   programme: string
   department: string
   faculty: string

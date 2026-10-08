@@ -24,7 +24,7 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen flex-col bg-[#F5F7F9]">
       {/* Top Header - No Sidebar */}
-      <div className="px-3 pt-4 sm:px-5 sm:pt-5">
+      <div className="sticky top-3 z-30 mt-4 px-3 sm:top-4 sm:mt-5 sm:px-5">
         <PortalHeader onLogout={handleLogout} />
       </div>
 
