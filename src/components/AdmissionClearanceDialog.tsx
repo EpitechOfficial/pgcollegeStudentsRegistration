@@ -35,9 +35,9 @@ export default function AdmissionClearanceDialog({ onClose }: { onClose: () => v
     const controller = new AbortController()
     void loadAdmissionClearance(controller.signal).then((data) => {
       if (!controller.signal.aborted) setResult(data)
-    }).catch(() => {
+    }).catch((error: unknown) => {
       if (!controller.signal.aborted) {
-        const message = 'Unable to load admission records. Please try again.'
+        const message = error instanceof Error ? error.message : 'Unable to load admission records. Please try again.'
         setError(message); showToast('error', message)
       }
     }).finally(() => { if (!controller.signal.aborted) setFetching(false) })

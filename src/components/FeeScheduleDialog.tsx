@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { LoaderCircle, Printer, Receipt, X } from 'lucide-react'
-import { COLLEGE, SCHOOL_FEE_SCHEDULE, formatNaira } from '../data/portal'
+import { COLLEGE, formatNaira } from '../data/portal'
+import { loadFeeSchedule, type FeeSchedule } from '../data/paymentsApi'
 import FlashToast from './FlashToast'
 import { useFlashToast } from './useFlashToast'
 
@@ -12,14 +13,24 @@ export default function FeeScheduleDialog({ onClose }: { onClose: () => void }) 
   const [printing, setPrinting] = useState(false)
   const [printDocument, setPrintDocument] = useState<{ id: number; html: string } | null>(null)
   const { toast, showToast, dismissToast } = useFlashToast()
-  const schedule = SCHOOL_FEE_SCHEDULE
+  const [schedule, setSchedule] = useState<FeeSchedule | null>(null)
+  const [fetching, setFetching] = useState(true)
+  const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    const controller = new AbortController()
+    void loadFeeSchedule(controller.signal).then(value => { if (!controller.signal.aborted) setSchedule(value) }).catch((failure: unknown) => {
+      if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'Unable to load fee schedule.')
+    }).finally(() => { if (!controller.signal.aborted) setFetching(false) })
+    return () => controller.abort()
+  }, [attempt])
   const brandUrl = new URL(`${import.meta.env.BASE_URL}brand/`, window.location.origin)
-  const total = schedule.items.reduce((sum, item) => sum + item.amount, 0)
-  const details = [
+  const total = schedule?.total ?? 0
+  const details = schedule ? [
     ['Faculty', schedule.faculty], ['Department', schedule.department],
     ['Mode of Study', schedule.modeOfStudy], ['Degree', schedule.degree],
-    ['Type', schedule.studentType], ['Session', schedule.session],
-  ]
+    ['Type', schedule.studentType], ['Session', schedule.session], ['Degree Category', schedule.degreeCategory],
+  ] : []
 
   useEffect(() => {
     const dialog = dialogRef.current!
@@ -30,7 +41,7 @@ export default function FeeScheduleDialog({ onClose }: { onClose: () => void }) 
   }, [])
 
   function preparePrint() {
-    if (printingRef.current || !contentRef.current) return
+    if (printingRef.current || !contentRef.current || fetching || error || !schedule) return
     printingRef.current = true
     setPrinting(true)
     setPrintDocument({ id: Date.now(), html: `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Schedule of Fees</title><style>
@@ -62,7 +73,7 @@ export default function FeeScheduleDialog({ onClose }: { onClose: () => void }) 
         </div>
         <button type="button" onClick={onClose} aria-label="Close schedule of fees" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button>
       </div>
-      <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+      {fetching ? <p role="status" className="flex items-center justify-center gap-2 p-10"><LoaderCircle className="h-5 w-5 animate-spin" />Loading fee schedule?</p> : error ? <div className="p-8 text-center"><p role="alert">{error}</p><button className="mt-4 rounded-xl bg-navy px-4 py-2 text-white" onClick={() => { setError(''); setFetching(true); setAttempt(value => value + 1) }}>Retry</button></div> : schedule && <div ref={contentRef} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
         <header className="schedule-letterhead mb-5 grid grid-cols-[48px_minmax(0,1fr)_48px] items-center gap-3 border-b-2 border-navy pb-4 text-center sm:grid-cols-[70px_minmax(0,1fr)_70px] sm:gap-4">
           <img src={new URL('pgc-logo.png', brandUrl).href} alt="Postgraduate College logo" className="h-12 w-12 object-contain sm:h-[70px] sm:w-[70px]" />
           <div><h3 className="text-sm font-bold text-navy sm:text-lg">{COLLEGE.shortName}</h3><p className="mt-1 text-xs font-semibold text-navy sm:text-sm">{COLLEGE.university}</p><h4 className="mt-3 text-xs font-bold uppercase tracking-wide text-navy sm:text-sm">Schedule of Fees</h4></div>
@@ -76,17 +87,17 @@ export default function FeeScheduleDialog({ onClose }: { onClose: () => void }) 
             <caption className="sr-only">School fees for {schedule.department}, {schedule.degree}, {schedule.session}</caption>
             <thead className="bg-navy text-white"><tr><th scope="col" className="px-4 py-3 text-left font-semibold">Fee</th><th scope="col" className="whitespace-nowrap px-4 py-3 text-right font-semibold">Amount (₦)</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {schedule.items.map((item, index) => <tr key={item.description} className={`${index % 2 ? 'bg-slate-50/70' : 'bg-white'} transition-colors hover:bg-navy/5`}><th scope="row" className="px-4 py-3 text-left text-xs font-medium leading-relaxed text-slate-700">{item.description}</th><td className="whitespace-nowrap px-4 py-3 text-right text-xs tabular-nums text-ink">{item.amount.toLocaleString('en-NG')}</td></tr>)}
+              {schedule.items.map((item, index) => <tr key={`${index}-${item.description}`} className={`${index % 2 ? 'bg-slate-50/70' : 'bg-white'} transition-colors hover:bg-navy/5`}><th scope="row" className="px-4 py-3 text-left text-xs font-medium leading-relaxed text-slate-700">{item.description}</th><td className="whitespace-nowrap px-4 py-3 text-right text-xs tabular-nums text-ink">{item.amount.toLocaleString('en-NG')}</td></tr>)}
             </tbody>
             <tfoot className="border-t border-navy/10 bg-navy/5 text-navy"><tr><th scope="row" className="px-4 py-4 text-left font-bold">TOTAL</th><td className="whitespace-nowrap px-4 py-4 text-right font-bold tabular-nums">{total.toLocaleString('en-NG')}</td></tr></tfoot>
           </table>
         </div>
-        <p className="mt-4 text-xs leading-relaxed text-slate-500">This schedule lists the full session charges. Check your payment record for payments already made. Currently shown from demo portal data.</p>
-      </div>
+        <p className="mt-4 text-xs leading-relaxed text-slate-500">This schedule lists the full session charges. Check your payment record for payments already made. {schedule.demo ? 'Currently shown from demo portal data.' : ''}</p>
+      </div>}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white p-4 sm:px-5">
-        <div><p className="text-2xs text-slate-500">Total session fees</p><p className="text-lg font-bold tabular-nums text-navy">{formatNaira(total)}</p></div>
+        <div><p className="text-2xs text-slate-500">Total session fees</p><p className="text-lg font-bold tabular-nums text-navy">{schedule ? formatNaira(total) : '?'}</p></div>
         <div className="flex items-center gap-3">
-          <button type="button" onClick={preparePrint} disabled={printing} aria-busy={printing} className="inline-flex items-center gap-2 rounded-xl border border-navy/20 bg-navy/5 px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-navy/10 disabled:cursor-not-allowed disabled:opacity-50">{printing ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Printer aria-hidden="true" className="h-4 w-4" />}{printing ? 'Preparing…' : 'Print / Save PDF'}</button>
+          <button type="button" onClick={preparePrint} disabled={printing || fetching || !!error || !schedule} aria-busy={printing} className="inline-flex items-center gap-2 rounded-xl border border-navy/20 bg-navy/5 px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-navy/10 disabled:cursor-not-allowed disabled:opacity-50">{printing ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Printer aria-hidden="true" className="h-4 w-4" />}{printing ? 'Preparing…' : 'Print / Save PDF'}</button>
           <button type="button" onClick={onClose} className="rounded-xl bg-navy px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-navy-700 active:scale-95">Close</button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 
 export interface Student {
   name: string
+  nameForForms: string
   matric: string
   applicationNumber: string
   degree: string
@@ -14,9 +15,8 @@ export interface Student {
 export interface FinancialSummary {
   totalFees: number
   amountPaid: number
-  outstanding: number
+  walletBalance: number
   session: string
-  paidPercent: number
 }
 
 export interface PortalService {
@@ -34,9 +34,10 @@ export interface PortalService {
   externalUrl?: string
 }
 
-export type CourseType = 'Required' | 'Elective'
+export type CourseType = 'Core' | 'Elective' | 'Required'
 
 export interface CourseOption {
+  id?: number
   code: string
   title: string
   type: CourseType

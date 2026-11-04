@@ -1,7 +1,8 @@
-import { COLLEGE, STUDENT } from './portal'
+import { COLLEGE, currentStudent } from './portal'
 import { amountInWords } from './amountInWords'
 
 export interface ReceiptDetails {
+  fullName?: string
   surname?: string
   otherNames?: string
   gender?: string
@@ -19,6 +20,7 @@ export interface ReceiptDetails {
   matric?: string
   bankName?: string
   cashier?: string
+  programme?: string
 }
 
 export interface FeeDocument {
@@ -43,6 +45,7 @@ function escapeHtml(value: string): string {
 }
 
 export function buildFeeDocument(document: FeeDocument): string {
+  const student = currentStudent()
   const title = document.kind === 'invoice' ? 'Invoice' : 'Receipt'
   const color = DOCUMENT_COLORS[document.kind]
   const logo = escapeHtml(new URL('/brand/pgc-logo.png', window.location.origin).href)
@@ -59,10 +62,10 @@ export function buildFeeDocument(document: FeeDocument): string {
     ['Field of Interest', profile.fieldOfInterest], ['Supervisor', profile.supervisor],
     ['Session of First Registration', profile.firstRegistrationSession],
   ] : [
-    ['Name', STUDENT.name], ['Application Number', STUDENT.applicationNumber],
-    [document.kind === 'invoice' ? 'Invoice Session' : 'Payment Session', document.session], ['Faculty', STUDENT.faculty],
-    ['Department', STUDENT.department], ['Degree', STUDENT.degree],
-    ['Mode of Study', STUDENT.modeOfStudy], ['Programme', STUDENT.programme],
+    ['Name', profile.fullName || student.name], ['Application Number', profile.applicationNumber || student.applicationNumber],
+    [document.kind === 'invoice' ? 'Invoice Session' : 'Payment Session', document.session], ['Faculty', profile.faculty || student.faculty],
+    ['Department', profile.department || student.department], ['Degree', profile.degree || student.degree],
+    ['Mode of Study', profile.modeOfStudy || student.modeOfStudy], ['Programme', profile.programme || student.programme],
   ]
   const detailGrid = (fields: (string | undefined)[][]) => fields.map(([label, value]) => `<div><p>${escapeHtml(label!)}:</p><b>${escapeHtml(value || 'Not provided')}</b></div>`).join('')
   const details = detailGrid(studentDetails)

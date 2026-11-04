@@ -1,0 +1,2208 @@
+{
+  "info": {
+    "_postman_id": "37044f03-bcf1-47ea-b274-03e003a8379a",
+    "name": "New Registration Portal API",
+    "description": "Backend API for the PG College New Registration Portal. All protected routes require a Bearer token from the login response.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "36564366",
+    "_collection_link": "https://go.postman.co/collection/36598745-37044f03-bcf1-47ea-b274-03e003a8379a?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var res = pm.response.json();",
+                  "if (res.token) {",
+                  "  pm.collectionVariables.set('token', res.token);",
+                  "  console.log('Token saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeration\": \"PGS202403571\",\n  \"password\": \"ABCDEFGHIJ\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login with numeration and password. Passwords are stored as plain text in the `new` table. The test script auto-saves the token.\n\nThree gates are checked before login is granted:\n1. Recommended for admission (admission_status.recommendation = 'Recommended')\n2. Acceptance fee paid (acceptance.amount_paid >= amount_charge)\n3. Cleared by admissions office (admission_status.clearance = 'Yes')"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeration\": \"PGS202403571\",\n  \"password\": \"ABCDEFGHIJ\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login"
+                  ]
+                },
+                "description": "Login with numeration and password. Passwords are stored as plain text in the `new` table. The test script auto-saves the token.\n\nThree gates are checked before login is granted:\n1. Recommended for admission (admission_status.recommendation = 'Recommended')\n2. Acceptance fee paid (acceptance.amount_paid >= amount_charge)\n3. Cleared by admissions office (admission_status.clearance = 'Yes')"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"token\": \"1|abc123...\",\n  \"data\": {\n    \"numeration\": \"PGS202403571\",\n    \"surname\": \"Alake\",\n    \"other_names\": \"Emmanuel\",\n    \"email\": \"student@example.com\",\n    \"telephone\": \"08012345678\"\n  }\n}"
+            },
+            {
+              "name": "Invalid credentials",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeration\": \"PGS202403571\",\n  \"password\": \"ABCDEFGHIJ\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login"
+                  ]
+                },
+                "description": "Login with numeration and password. Passwords are stored as plain text in the `new` table. The test script auto-saves the token.\n\nThree gates are checked before login is granted:\n1. Recommended for admission (admission_status.recommendation = 'Recommended')\n2. Acceptance fee paid (acceptance.amount_paid >= amount_charge)\n3. Cleared by admissions office (admission_status.clearance = 'Yes')"
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid application number or password.\"\n}"
+            },
+            {
+              "name": "Not recommended for admission",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"numeration\": \"PGS202403571\",\n  \"password\": \"ABCDEFGHIJ\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login"
+                  ]
+                },
+                "description": "Login with numeration and password. Passwords are stored as plain text in the `new` table. The test script auto-saves the token.\n\nThree gates are checked before login is granted:\n1. Recommended for admission (admission_status.recommendation = 'Recommended')\n2. Acceptance fee paid (acceptance.amount_paid >= amount_charge)\n3. Cleared by admissions office (admission_status.clearance = 'Yes')"
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"You have not been recommended for admission.\",\n  \"gate\": \"recommendation\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"PGS202403571\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "Looks up account by numeration or email, then emails the student their existing plain-text password."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Logged-in User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "user"
+              ]
+            },
+            "description": "Returns the authenticated student's full profile, programme, financial summary, and admission status.\n\n`programme.degree_type` values:\n- `higher_degree` — Ph.D, M.Phil/Ph.D, M.Phil (show Examination Process section)\n- `masters` — all other degrees\n\nFrontend uses `degree_type` to conditionally show the Examination Process dashboard card."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/auth/user",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "user"
+                  ]
+                },
+                "description": "Returns the authenticated student's full profile, programme, financial summary, and admission status.\n\n`programme.degree_type` values:\n- `higher_degree` — Ph.D, M.Phil/Ph.D, M.Phil (show Examination Process section)\n- `masters` — all other degrees\n\nFrontend uses `degree_type` to conditionally show the Examination Process dashboard card."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"numeration\": \"PGS202403571\",\n    \"surname\": \"Alake\",\n    \"other_names\": \"Emmanuel\",\n    \"email\": \"student@example.com\",\n    \"telephone\": \"08012345678\",\n    \"nationality\": \"Nigeria\",\n    \"session\": \"2026/27\",\n    \"programme\": {\n      \"faculty\": \"Faculty of Economics\",\n      \"department\": \"Economics\",\n      \"degree\": \"M.Sc.\",\n      \"degree_type\": \"masters\",\n      \"mode_of_study\": \"Full-time\",\n      \"field_of_interest\": \"Economics\",\n      \"program_type\": \"Masters\"\n    },\n    \"financial_summary\": {\n      \"total_fees\": 155000,\n      \"amount_paid\": 0,\n      \"outstanding_balance\": 155000,\n      \"percentage_settled\": 0,\n      \"currency\": \"Naira\",\n      \"invoice_number\": \"INV/2024/000123\",\n      \"invoice_flag\": 0\n    },\n    \"admission_status\": {\n      \"recommendation\": \"Recommended\",\n      \"clearance\": \"Yes\",\n      \"admitted_semester\": \"First\",\n      \"supervisor\": null,\n      \"letter_ready\": null,\n      \"letter_signed\": null\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Revokes the current Sanctum token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Course Registration",
+      "item": [
+        {
+          "name": "Get Available Courses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/available",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "available"
+              ]
+            },
+            "description": "Returns courses from `course_new` filtered by the student's department, degree, and specialization (field_of_interest). Only active courses (status2 = 1) are returned.\n\nEach course includes `registered: true/false` to show which are already in the student's selection for the current session.\n\nCourse `type` values: Required (C), Elective (E), Research (R)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/courses/available",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "available"
+                  ]
+                },
+                "description": "Returns courses from `course_new` filtered by the student's department, degree, and specialization (field_of_interest). Only active courses (status2 = 1) are returned.\n\nEach course includes `registered: true/false` to show which are already in the student's selection for the current session.\n\nCourse `type` values: Required (C), Elective (E), Research (R)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"session\": \"2026/27\",\n  \"total\": 12,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"course_code\": \"ECO 801\",\n      \"course_title\": \"Advanced Microeconomics\",\n      \"unit\": 3,\n      \"type\": \"Required\",\n      \"registered\": false\n    },\n    {\n      \"id\": 2,\n      \"course_code\": \"ECO 803\",\n      \"course_title\": \"Research Methodology\",\n      \"unit\": 3,\n      \"type\": \"Elective\",\n      \"registered\": true\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Registered Courses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/registered",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "registered"
+              ]
+            },
+            "description": "Returns only the courses the student has registered for in the current session, with lock status and unit summary."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/courses/registered",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "registered"
+                  ]
+                },
+                "description": "Returns only the courses the student has registered for in the current session, with lock status and unit summary."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": [\n    {\n      \"reg_id\": 101,\n      \"course_id\": 2,\n      \"course_code\": \"ECO 803\",\n      \"course_title\": \"Research Methodology\",\n      \"unit\": 3,\n      \"type\": \"Elective\"\n    }\n  ],\n  \"summary\": {\n    \"count\": 1,\n    \"total_units\": 3,\n    \"locked\": false,\n    \"session\": \"2026/27\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Registration Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "status"
+              ]
+            },
+            "description": "Returns the lock state, course count, and total units for the current session. Lightweight — use for status badge on dashboard."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/courses/status",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "status"
+                  ]
+                },
+                "description": "Returns the lock state, course count, and total units for the current session. Lightweight — use for status badge on dashboard."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"locked\": false,\n    \"count\": 5,\n    \"total_units\": 15,\n    \"session\": \"2026/27\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Save / Sync Course Selection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"course_ids\": [1, 2, 5, 7]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/courses/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "register"
+              ]
+            },
+            "description": "Replaces the student's entire course selection for the current session with the provided list. Send the full list every time (not incremental).\n\nBlocked (403) if registration is locked. Returns 422 if no active session."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"course_ids\": [1, 2, 5, 7]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/courses/register",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "register"
+                  ]
+                },
+                "description": "Replaces the student's entire course selection for the current session with the provided list. Send the full list every time (not incremental).\n\nBlocked (403) if registration is locked. Returns 422 if no active session."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Course selection saved.\"\n}"
+            },
+            {
+              "name": "Locked",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"course_ids\": [1, 2, 5, 7]\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/courses/register",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "register"
+                  ]
+                },
+                "description": "Replaces the student's entire course selection for the current session with the provided list. Send the full list every time (not incremental).\n\nBlocked (403) if registration is locked. Returns 422 if no active session."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Your registration is locked. Contact the Management to make changes.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Single Course",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "2"
+              ]
+            },
+            "description": "Removes a single course (by course_new.id) from the current session registration. Blocked if locked."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/courses/2",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "2"
+                  ]
+                },
+                "description": "Removes a single course (by course_new.id) from the current session registration. Blocked if locked."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Course removed.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Confirm / Lock Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/confirm",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "confirm"
+              ]
+            },
+            "description": "Locks the student's course registration for the current session. Automatically records:\n- lock = 1, lockupdate and reallockdate (lock timestamp)\n- signed = 1, signdate (DR signature date)\n\nAlso returns the active Deputy Registrar's details from `letter_officials` — the frontend uses these to render the signature block on the print form."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/courses/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "confirm"
+                  ]
+                },
+                "description": "Locks the student's course registration for the current session. Automatically records:\n- lock = 1, lockupdate and reallockdate (lock timestamp)\n- signed = 1, signdate (DR signature date)\n\nAlso returns the active Deputy Registrar's details from `letter_officials` — the frontend uses these to render the signature block on the print form."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Course registration confirmed and locked.\",\n  \"data\": {\n    \"locked_at\": \"2026-10-22 14:30:00\",\n    \"locked_date\": \"2026-10-22\",\n    \"signatory\": {\n      \"title\": \"Deputy Registrar\",\n      \"name\": \"A. O. Olaoye\",\n      \"credentials\": \"B.A.(Hons)Ife, MMP(Ibadan), MANUPA, MCIPDM.\"\n    }\n  }\n}"
+            },
+            {
+              "name": "No courses registered",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/courses/confirm",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "confirm"
+                  ]
+                },
+                "description": "Locks the student's course registration for the current session. Automatically records:\n- lock = 1, lockupdate and reallockdate (lock timestamp)\n- signed = 1, signdate (DR signature date)\n\nAlso returns the active Deputy Registrar's details from `letter_officials` — the frontend uses these to render the signature block on the print form."
+              },
+              "status": "Unprocessable Content",
+              "code": 422,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"No courses registered. Please select courses before confirming.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Unlock Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/unlock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "unlock"
+              ]
+            },
+            "description": "Unlocks the course registration (registry-initiated on student request). Clears lock, lockupdate, and reallockdate."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/courses/unlock",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "unlock"
+                  ]
+                },
+                "description": "Unlocks the course registration (registry-initiated on student request). Clears lock, lockupdate, and reallockdate."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Course registration unlocked.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Print Form Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/courses/print",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "courses",
+                "print"
+              ]
+            },
+            "description": "Returns all data needed to render the Course Registration print form.\n\nKey fields:\n- `student.matric_no` — last 5 digits of numeration\n- `student.first_reg_session` — from form.form_year\n- `locked_date` — from reg_coz.signdate (set when student locks)\n- `signatory` — Deputy Registrar from letter_officials (only populated when locked)\n- `sponsor`, `employer`, `education` — from sponsor/employment_info/edu_info tables"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/courses/print",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "courses",
+                    "print"
+                  ]
+                },
+                "description": "Returns all data needed to render the Course Registration print form.\n\nKey fields:\n- `student.matric_no` — last 5 digits of numeration\n- `student.first_reg_session` — from form.form_year\n- `locked_date` — from reg_coz.signdate (set when student locks)\n- `signatory` — Deputy Registrar from letter_officials (only populated when locked)\n- `sponsor`, `employer`, `education` — from sponsor/employment_info/edu_info tables"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"student\": {\n      \"numeration\": \"PGS202403571\",\n      \"matric_no\": \"03571\",\n      \"surname\": \"Alake\",\n      \"other_names\": \"Emmanuel\",\n      \"gender\": \"Male\",\n      \"marital_status\": \"Single\",\n      \"telephone\": \"08012345678\",\n      \"email\": \"student@example.com\",\n      \"faculty\": \"Faculty of Economics\",\n      \"department\": \"Economics\",\n      \"degree\": \"M.Sc.\",\n      \"mode_of_study\": \"Full-time\",\n      \"field_of_interest\": \"Economics\",\n      \"first_reg_session\": \"2024/25\"\n    },\n    \"sponsor\": {\n      \"name\": \"Mr John Doe\",\n      \"address\": \"45 Sponsor Street, Lagos\",\n      \"telephone\": \"08012345678\",\n      \"email\": \"sponsor@example.com\"\n    },\n    \"employer\": null,\n    \"education\": [\n      {\n        \"school\": \"University of Ibadan\",\n        \"from_year\": \"2015\",\n        \"to_year\": \"2019\",\n        \"degree\": \"B.Sc.\",\n        \"course\": \"Economics\"\n      }\n    ],\n    \"session\": \"2026/27\",\n    \"locked\": true,\n    \"locked_date\": \"2026-10-22\",\n    \"courses\": [\n      {\n        \"course_code\": \"ECO 801\",\n        \"course_title\": \"Advanced Microeconomics\",\n        \"unit\": 3,\n        \"type\": \"Required\"\n      }\n    ],\n    \"total_units\": 15,\n    \"signatory\": {\n      \"title\": \"Deputy Registrar\",\n      \"name\": \"A. O. Olaoye\",\n      \"credentials\": \"B.A.(Hons)Ife, MMP(Ibadan), MANUPA, MCIPDM.\"\n    }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Medical & Passport",
+      "item": [
+        {
+          "name": "Get Medical Record",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/medical",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "medical"
+              ]
+            },
+            "description": "Returns the student's health record from the `healthrecord` table, keyed by Numeration.\n\n`is_locked` is true when `biodata.approval` has been set (admin has approved the record). The frontend shows a lock warning and disables the form when true.\n\n`data` is null if no record has been saved yet."
+          },
+          "response": [
+            {
+              "name": "Success (record exists)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/medical",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "medical"
+                  ]
+                },
+                "description": "Returns the student's health record from the `healthrecord` table, keyed by Numeration.\n\n`is_locked` is true when `biodata.approval` has been set (admin has approved the record). The frontend shows a lock warning and disables the form when true.\n\n`data` is null if no record has been saved yet."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"is_locked\": false,\n  \"data\": {\n    \"contact_name\": \"Mrs Jane Doe\",\n    \"contact_telephone\": \"08012345678\",\n    \"contact_address\": \"12 Emergency Lane, Ibadan\",\n    \"health_status\": \"Good\",\n    \"admitted_inpatient\": \"No\",\n    \"admission_reason\": null,\n    \"on_medication\": \"No\",\n    \"medication_details\": null,\n    \"tuberculosis\": \"No\",\n    \"schistosomiasis\": \"No\",\n    \"respiratory_disease\": \"No\",\n    \"sickle_cell_disease\": \"No\",\n    \"allergies\": \"No\",\n    \"diabetes\": \"No\",\n    \"digestive_disease\": \"No\",\n    \"heart_disease\": \"No\",\n    \"genitourinary_disease\": \"No\",\n    \"nervous_disease\": \"No\",\n    \"disease_details\": null,\n    \"other_medical_history\": null,\n    \"travel_history\": null,\n    \"family_healthy\": \"Yes\",\n    \"family_tuberculosis\": \"No\",\n    \"family_diabetes\": \"No\",\n    \"family_hypertension\": \"No\",\n    \"family_mental_illness\": \"No\",\n    \"drug_reactions\": \"No\",\n    \"drug_reaction_details\": null,\n    \"immunized_hepatitis\": \"Yes\",\n    \"immunized_tetanus\": \"Yes\",\n    \"immunized_yellow_fever\": \"Yes\",\n    \"immunized_meningitis\": \"Yes\",\n    \"other_immunizations\": null\n  }\n}"
+            },
+            {
+              "name": "Success (no record yet)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/medical",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "medical"
+                  ]
+                },
+                "description": "Returns the student's health record from the `healthrecord` table, keyed by Numeration.\n\n`is_locked` is true when `biodata.approval` has been set (admin has approved the record). The frontend shows a lock warning and disables the form when true.\n\n`data` is null if no record has been saved yet."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"is_locked\": false,\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Save Medical Record",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contact_name\": \"Mrs Jane Doe\",\n  \"contact_telephone\": \"08012345678\",\n  \"contact_address\": \"12 Emergency Lane, Ibadan\",\n  \"health_status\": \"Good\",\n  \"admitted_inpatient\": \"No\",\n  \"admission_reason\": null,\n  \"on_medication\": \"No\",\n  \"medication_details\": null,\n  \"tuberculosis\": \"No\",\n  \"schistosomiasis\": \"No\",\n  \"respiratory_disease\": \"No\",\n  \"sickle_cell_disease\": \"No\",\n  \"allergies\": \"No\",\n  \"diabetes\": \"No\",\n  \"digestive_disease\": \"No\",\n  \"heart_disease\": \"No\",\n  \"genitourinary_disease\": \"No\",\n  \"nervous_disease\": \"No\",\n  \"disease_details\": null,\n  \"other_medical_history\": null,\n  \"travel_history\": null,\n  \"family_healthy\": \"Yes\",\n  \"family_tuberculosis\": \"No\",\n  \"family_diabetes\": \"No\",\n  \"family_hypertension\": \"No\",\n  \"family_mental_illness\": \"No\",\n  \"drug_reactions\": \"No\",\n  \"drug_reaction_details\": null,\n  \"immunized_hepatitis\": \"Yes\",\n  \"immunized_tetanus\": \"Yes\",\n  \"immunized_yellow_fever\": \"Yes\",\n  \"immunized_meningitis\": \"Yes\",\n  \"other_immunizations\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/medical",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "medical"
+              ]
+            },
+            "description": "Creates or updates the student's health record in `healthrecord` table. Upsert — safe to call on every save.\n\nRequired fields: contact_name, contact_telephone, contact_address, health_status, admitted_inpatient, on_medication, all medical condition fields, all family history fields, all immunization fields.\n\nReturns 403 if the record is locked by admin."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"contact_name\": \"Mrs Jane Doe\",\n  \"contact_telephone\": \"08012345678\",\n  \"contact_address\": \"12 Emergency Lane, Ibadan\",\n  \"health_status\": \"Good\",\n  \"admitted_inpatient\": \"No\",\n  \"admission_reason\": null,\n  \"on_medication\": \"No\",\n  \"medication_details\": null,\n  \"tuberculosis\": \"No\",\n  \"schistosomiasis\": \"No\",\n  \"respiratory_disease\": \"No\",\n  \"sickle_cell_disease\": \"No\",\n  \"allergies\": \"No\",\n  \"diabetes\": \"No\",\n  \"digestive_disease\": \"No\",\n  \"heart_disease\": \"No\",\n  \"genitourinary_disease\": \"No\",\n  \"nervous_disease\": \"No\",\n  \"disease_details\": null,\n  \"other_medical_history\": null,\n  \"travel_history\": null,\n  \"family_healthy\": \"Yes\",\n  \"family_tuberculosis\": \"No\",\n  \"family_diabetes\": \"No\",\n  \"family_hypertension\": \"No\",\n  \"family_mental_illness\": \"No\",\n  \"drug_reactions\": \"No\",\n  \"drug_reaction_details\": null,\n  \"immunized_hepatitis\": \"Yes\",\n  \"immunized_tetanus\": \"Yes\",\n  \"immunized_yellow_fever\": \"Yes\",\n  \"immunized_meningitis\": \"Yes\",\n  \"other_immunizations\": null\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/medical",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "medical"
+                  ]
+                },
+                "description": "Creates or updates the student's health record in `healthrecord` table. Upsert — safe to call on every save.\n\nRequired fields: contact_name, contact_telephone, contact_address, health_status, admitted_inpatient, on_medication, all medical condition fields, all family history fields, all immunization fields.\n\nReturns 403 if the record is locked by admin."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Medical record saved.\",\n  \"data\": { \"...full record...\" }\n}"
+            },
+            {
+              "name": "Locked",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"contact_name\": \"Mrs Jane Doe\",\n  \"contact_telephone\": \"08012345678\",\n  \"contact_address\": \"12 Emergency Lane, Ibadan\",\n  \"health_status\": \"Good\",\n  \"admitted_inpatient\": \"No\",\n  \"admission_reason\": null,\n  \"on_medication\": \"No\",\n  \"medication_details\": null,\n  \"tuberculosis\": \"No\",\n  \"schistosomiasis\": \"No\",\n  \"respiratory_disease\": \"No\",\n  \"sickle_cell_disease\": \"No\",\n  \"allergies\": \"No\",\n  \"diabetes\": \"No\",\n  \"digestive_disease\": \"No\",\n  \"heart_disease\": \"No\",\n  \"genitourinary_disease\": \"No\",\n  \"nervous_disease\": \"No\",\n  \"disease_details\": null,\n  \"other_medical_history\": null,\n  \"travel_history\": null,\n  \"family_healthy\": \"Yes\",\n  \"family_tuberculosis\": \"No\",\n  \"family_diabetes\": \"No\",\n  \"family_hypertension\": \"No\",\n  \"family_mental_illness\": \"No\",\n  \"drug_reactions\": \"No\",\n  \"drug_reaction_details\": null,\n  \"immunized_hepatitis\": \"Yes\",\n  \"immunized_tetanus\": \"Yes\",\n  \"immunized_yellow_fever\": \"Yes\",\n  \"immunized_meningitis\": \"Yes\",\n  \"other_immunizations\": null\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/medical",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "medical"
+                  ]
+                },
+                "description": "Creates or updates the student's health record in `healthrecord` table. Upsert — safe to call on every save.\n\nRequired fields: contact_name, contact_telephone, contact_address, health_status, admitted_inpatient, on_medication, all medical condition fields, all family history fields, all immunization fields.\n\nReturns 403 if the record is locked by admin."
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Student information is locked. Contact the Management to unlock.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Passport",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/medical/passport",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "medical",
+                "passport"
+              ]
+            },
+            "description": "Returns whether the student has a passport photo uploaded and its URL.\n\nPassport is stored in `doc_detail` with degree = 'passport'."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/medical/passport",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "medical",
+                    "passport"
+                  ]
+                },
+                "description": "Returns whether the student has a passport photo uploaded and its URL.\n\nPassport is stored in `doc_detail` with degree = 'passport'."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"is_locked\": false,\n  \"data\": {\n    \"has_passport\": true,\n    \"url\": \"http://localhost/new-reg/public/storage/passports/PGS202403571_passport.jpg\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Passport",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "description": "JPG or PNG, max 2 MB",
+                  "value": null
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/medical/passport",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "medical",
+                "passport"
+              ]
+            },
+            "description": "Uploads a passport photo (JPG/PNG, max 2 MB). Stores in `storage/app/public/passports/` and saves the path to `doc_detail` (degree = 'passport'). Replaces any existing passport.\n\nReturns 403 if locked."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "photo",
+                      "type": "file",
+                      "description": "JPG or PNG, max 2 MB",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/medical/passport",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "medical",
+                    "passport"
+                  ]
+                },
+                "description": "Uploads a passport photo (JPG/PNG, max 2 MB). Stores in `storage/app/public/passports/` and saves the path to `doc_detail` (degree = 'passport'). Replaces any existing passport.\n\nReturns 403 if locked."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Passport uploaded successfully.\",\n  \"data\": {\n    \"url\": \"http://localhost/new-reg/public/storage/passports/PGS202403571_passport.jpg\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Payments",
+      "item": [
+        {
+          "name": "Fee Schedule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/schedule",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "schedule"
+              ]
+            },
+            "description": "Returns the full fee schedule for the student's programme for the current session. Includes line items, total, degree category (Masters/Ph.D), and renewal type (New/Renewal).\n\nRebates are applied automatically if an approved rebate record exists."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/payments/schedule",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "payments",
+                    "schedule"
+                  ]
+                },
+                "description": "Returns the full fee schedule for the student's programme for the current session. Includes line items, total, degree category (Masters/Ph.D), and renewal type (New/Renewal).\n\nRebates are applied automatically if an approved rebate record exists."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"session\": \"2026/27\",\n    \"faculty\": \"Faculty of Economics\",\n    \"department\": \"Economics\",\n    \"degree\": \"M.Sc.\",\n    \"mode_of_study\": \"Full-time\",\n    \"type\": \"Renewal\",\n    \"degree_category\": \"Masters\",\n    \"fee_items\": [\n      { \"description\": \"Tuition Fee\", \"amount\": 150000 },\n      { \"description\": \"Library Fee\", \"amount\": 5000 }\n    ],\n    \"total_amount\": 155000,\n    \"currency\": \"NGN\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Receipts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/receipts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "receipts"
+              ]
+            },
+            "description": "Returns all confirmed (invoice_flag = 1) school fee payments from `reginvoice`.\n\nOptional query param: `?session=2026/27`"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Single Receipt",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/receipt/INV-2024-001",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "receipt",
+                "INV-2024-001"
+              ]
+            },
+            "description": "Returns a single receipt with student profile and fee line items."
+          },
+          "response": []
+        },
+        {
+          "name": "Financial Clearance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/financial-clearance",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "financial-clearance"
+              ]
+            },
+            "description": "Returns the financial clearance summary for the current session: total fees, amount paid, outstanding balance, and status (Fully Paid / Part Payment / Unpaid)."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/payments/financial-clearance",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "payments",
+                    "financial-clearance"
+                  ]
+                },
+                "description": "Returns the financial clearance summary for the current session: total fees, amount paid, outstanding balance, and status (Fully Paid / Part Payment / Unpaid)."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"session\": \"2026/27\",\n    \"application_number\": \"PGS202403571\",\n    \"total_fees\": 155000,\n    \"confirmed_payments\": 0,\n    \"outstanding_balance\": 155000,\n    \"status\": \"Unpaid\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "All Payment Records",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/payments/records",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "payments",
+                "records"
+              ],
+              "query": [
+                {
+                  "key": "session",
+                  "value": "2026/27",
+                  "disabled": true
+                },
+                {
+                  "key": "fee_type",
+                  "value": "school_fees",
+                  "description": "school_fees | acceptance | application",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "paid",
+                  "description": "paid | pending",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns all payment records across all fee types (school fees, acceptance, application). Merges from `reginvoice`, `acceptance`, and `appinvoice` tables.\n\nOptional filters: `session`, `fee_type` (school_fees|acceptance|application), `status` (paid|pending)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Wallet",
+      "item": [
+        {
+          "name": "Get Wallet Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/wallet",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "wallet"
+              ]
+            },
+            "description": "Returns the student's current wallet balance. Creates a zero-balance wallet if none exists yet."
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/wallet",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "wallet"
+                  ]
+                },
+                "description": "Returns the student's current wallet balance. Creates a zero-balance wallet if none exists yet."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"balance\": 50000.00,\n    \"currency\": \"NGN\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Deposit Link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/wallet/initiate-deposit",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "wallet",
+                "initiate-deposit"
+              ]
+            },
+            "description": "Returns the UnibadanMFB payment link for wallet top-up. The student enters the amount on the UnibadanMFB page.\n\nThe link format is: `https://unibadanmfb.org/wallet.php?ref={numeration}&pid=17`\n\n**Flow:**\n1. Call this endpoint → get `payment_link`\n2. Redirect student to `payment_link`\n3. Student enters amount and pays on UnibadanMFB\n4. UnibadanMFB calls `POST /wallet/webhook` automatically\n5. Wallet balance updates — frontend can poll `GET /wallet` to confirm\n\n**Register this webhook URL with UnibadanMFB (pid=17):**\n```\nhttps://app.pgcollege.ui.edu.ng/registrationfrontend/api/wallet/webhook\n```"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/wallet/initiate-deposit",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "wallet",
+                    "initiate-deposit"
+                  ]
+                },
+                "description": "Returns the UnibadanMFB payment link for wallet top-up. The student enters the amount on the UnibadanMFB page.\n\nThe link format is: `https://unibadanmfb.org/wallet.php?ref={numeration}&pid=17`\n\n**Flow:**\n1. Call this endpoint → get `payment_link`\n2. Redirect student to `payment_link`\n3. Student enters amount and pays on UnibadanMFB\n4. UnibadanMFB calls `POST /wallet/webhook` automatically\n5. Wallet balance updates — frontend can poll `GET /wallet` to confirm\n\n**Register this webhook URL with UnibadanMFB (pid=17):**\n```\nhttps://app.pgcollege.ui.edu.ng/registrationfrontend/api/wallet/webhook\n```"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"payment_link\": \"https://unibadanmfb.org/wallet.php?ref=PGS26170666623650&pid=17\",\n    \"instructions\": \"Click the link to deposit funds via UnibadanMFB. Your wallet balance will update automatically once payment is confirmed.\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Wallet Webhook (UnibadanMFB → Server)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"PGS26170666623650\",\n  \"status\": \"success\",\n  \"amount\": 50000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/wallet/webhook",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "wallet",
+                "webhook"
+              ]
+            },
+            "description": "**Called automatically by UnibadanMFB (pid=17)** — not by the frontend.\n\n`ref` is the student's **numeration** (e.g. `PGS26170666623650`), not a transaction reference.\n\nOn success: creates a `paid` deposit in `wallet_transactions` and credits the wallet.\n\nIdempotent — duplicate calls within 5 minutes for the same numeration + amount are ignored.\n\n**Reference field:** `ref`, `reference`, or `refno` — whichever UnibadanMFB sends.\n\n**Accepted status values:** `success`, `successful`, `paid`, `1`, `true`"
+          },
+          "response": []
+        },
+        {
+          "name": "Pay Invoice from Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceno\": \"INV/2026/000123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/wallet/pay",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "wallet",
+                "pay"
+              ]
+            },
+            "description": "Debits the wallet to pay a school fee invoice from `reginvoice`.\n\n**Checks:**\n1. Invoice exists and belongs to this student\n2. Invoice is not already paid\n3. Wallet balance ≥ outstanding amount\n\nOn success: deducts balance, creates `fee_payment` transaction, sets `reginvoice.invoice_flag = 1`.\n\n**Response (402 — insufficient balance):**\n```json\n{\n  \"success\": false,\n  \"message\": \"Insufficient wallet balance.\",\n  \"data\": { \"balance\": 30000, \"outstanding\": 155000, \"shortfall\": 125000 }\n}\n```"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"invoiceno\": \"INV/2026/000123\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/wallet/pay",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "wallet",
+                    "pay"
+                  ]
+                },
+                "description": "Debits the wallet to pay a school fee invoice from `reginvoice`.\n\n**Checks:**\n1. Invoice exists and belongs to this student\n2. Invoice is not already paid\n3. Wallet balance ≥ outstanding amount\n\nOn success: deducts balance, creates `fee_payment` transaction, sets `reginvoice.invoice_flag = 1`.\n\n**Response (402 — insufficient balance):**\n```json\n{\n  \"success\": false,\n  \"message\": \"Insufficient wallet balance.\",\n  \"data\": { \"balance\": 30000, \"outstanding\": 155000, \"shortfall\": 125000 }\n}\n```"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Payment successful.\",\n  \"data\": {\n    \"refno\": \"PY17927840568034\",\n    \"invoiceno\": \"INV/2026/000123\",\n    \"amount_paid\": 155000,\n    \"balance\": 45000\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Transaction History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/wallet/history",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "wallet",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "deposit",
+                  "description": "deposit | fee_payment | withdraw",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "paid",
+                  "description": "pending | paid | completed | failed",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "PY179",
+                  "description": "Partial refno match",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "description": "Max 100. Default 20.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns paginated wallet transaction history with current balance.\n\nAll query params are optional:\n- `type` — `deposit` | `fee_payment` | `withdraw`\n- `status` — `pending` | `paid` | `completed` | `failed`\n- `search` — partial match on `refno`\n- `per_page` — items per page (max 100, default 20)"
+          },
+          "response": [
+            {
+              "name": "Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/wallet/history",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "wallet",
+                    "history"
+                  ],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "deposit",
+                      "description": "deposit | fee_payment | withdraw",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "paid",
+                      "description": "pending | paid | completed | failed",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "PY179",
+                      "description": "Partial refno match",
+                      "disabled": true
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "20",
+                      "description": "Max 100. Default 20.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns paginated wallet transaction history with current balance.\n\nAll query params are optional:\n- `type` — `deposit` | `fee_payment` | `withdraw`\n- `status` — `pending` | `paid` | `completed` | `failed`\n- `search` — partial match on `refno`\n- `per_page` — items per page (max 100, default 20)"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "Text",
+              "header": [],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"balance\": 45000.00,\n    \"total\": 12,\n    \"per_page\": 20,\n    \"current_page\": 1,\n    \"last_page\": 1,\n    \"transactions\": [\n      {\n        \"id\": 3318,\n        \"refno\": \"PY17927840568034\",\n        \"type\": \"fee_payment\",\n        \"purpose\": \"School Fee\",\n        \"amount\": 155000.00,\n        \"status\": \"paid\",\n        \"created_at\": \"2026-10-23 19:31:06\"\n      },\n      {\n        \"id\": 3317,\n        \"refno\": \"PY17927798503086\",\n        \"type\": \"deposit\",\n        \"purpose\": null,\n        \"amount\": 200000.00,\n        \"status\": \"paid\",\n        \"created_at\": \"2026-10-23 18:24:10\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Invoice (School Fees) — Legacy",
+      "item": [
+        {
+          "name": "Verify Staff (Pre-generation check)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"staff_id\": \"STAFF001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/invoice/verify-staff",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "invoice",
+                "verify-staff"
+              ]
+            },
+            "description": "Verifies that a staff member is authorised to approve invoice generation for this student."
+          },
+          "response": []
+        },
+        {
+          "name": "Preview Invoice",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/invoice/preview",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "invoice",
+                "preview"
+              ]
+            },
+            "description": "Returns a fee breakdown for the current session before generating a formal invoice."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"staff_id\": \"STAFF001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/invoice/generate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "invoice",
+                "generate"
+              ]
+            },
+            "description": "Generates and persists a formal invoice for the current session."
+          },
+          "response": []
+        },
+        {
+          "name": "Show Invoice",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/invoice",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "invoice"
+              ]
+            },
+            "description": "Returns the student's existing invoice for the current session with student profile and all line items."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Admission Clearance",
+      "item": [
+        {
+          "name": "Get Clearance Form Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/clearance",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "clearance"
+              ]
+            },
+            "description": "Returns read-only admission clearance data assembled from multiple tables (biodata, programme, sponsorship, education). No input required from the student."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Reactivation Form",
+      "item": [
+        {
+          "name": "Get Pre-fill Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reactivation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reactivation"
+              ]
+            },
+            "description": "Returns the student's profile and existing suspension data to pre-populate the reactivation form."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Filled Form Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reactivation_type\": \"Suspended Registration\",\n  \"session\": \"2026/27\",\n  \"matricno\": \"03571\",\n  \"address\": \"12 University Road, Ibadan\",\n  \"email\": \"student@example.com\",\n  \"telephone\": \"08012345678\",\n  \"sponsor_details\": \"Mr John Doe, 45 Sponsor Street, Lagos\",\n  \"employer_details\": null,\n  \"date_first_reg\": \"2023-09-15\",\n  \"date_last_reg\": \"2024-06-30\",\n  \"sem_completed\": 2,\n  \"susp_period\": \"1 Semester\",\n  \"mode_of_study\": \"Full-time\",\n  \"commitment\": \"Yes\",\n  \"finance_plan\": \"Self-sponsored through personal savings.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reactivation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reactivation"
+              ]
+            },
+            "description": "Submits the completed reactivation form fields. Returns structured form_data for the student to download, sign and submit physically."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "8. Suspension of Programme",
+      "item": [
+        {
+          "name": "Get Profile + Suspension Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/suspension",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suspension"
+              ]
+            },
+            "description": "Returns the student's profile for form pre-population AND their existing suspension record (null if none submitted yet)."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Suspension Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"matricno\": \"03571\",\n  \"sec\": \"2024/25\",\n  \"address\": \"12 University Road, Ibadan\",\n  \"sem_completed\": \"2\",\n  \"reason_suspension\": \"Financial difficulties.\",\n  \"susp_period\": \"1 Semester\",\n  \"resumption\": \"2025/26\",\n  \"sponsor\": \"Mr John Doe\",\n  \"sponsor_telno\": \"08012345678\",\n  \"sponsor_email\": \"john.doe@example.com\",\n  \"sponsor_address\": \"45 Sponsor Street, Lagos\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/suspension",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suspension"
+              ]
+            },
+            "description": "Submits a new suspension application. susp_period must be '1 Semester' or '2 Semesters'. Returns 409 if one already exists."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Suspension Application",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason_suspension\": \"Updated reason: health issues.\",\n  \"susp_period\": \"2 Semesters\",\n  \"resumption\": \"2026/27\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/suspension",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "suspension"
+              ]
+            },
+            "description": "Updates an existing pending suspension application. Partial updates supported. Returns 403 if already approved."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost/new-reg/public/api"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "description": "Set this after login"
+    },
+    {
+      "key": "wallet_refno",
+      "value": "",
+      "description": "Auto-saved from Initiate Deposit response"
+    }
+  ]
+}

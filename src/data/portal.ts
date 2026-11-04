@@ -5,7 +5,6 @@ import {
   ClipboardList,
   Clock,
   CreditCard,
-  Download,
   FileCheck,
   FileText,
   GraduationCap,
@@ -20,6 +19,7 @@ import {
   Upload,
 } from 'lucide-react'
 import type { CourseOption, FinancialSummary, ServiceSection, Student } from '../types'
+import { authenticatedUser, isDemoSession } from './auth'
 
 /* ------------------------------------------------------------------ */
 /* Institutional identity — official contacts of the Postgraduate      */
@@ -42,6 +42,7 @@ export const CURRENT_SESSION = '2025/2026' as const
 /* ------------------------------------------------------------------ */
 export const STUDENT: Student = {
   name: 'Alake Emmanuel',
+  nameForForms: 'Emmanuel Alake',
   matric: '03571',
   applicationNumber: 'PGS202403571',
   degree: 'M.Sc.',
@@ -49,6 +50,30 @@ export const STUDENT: Student = {
   programme: 'M.Sc. Economics',
   department: 'Economics',
   faculty: 'Faculty of Economics',
+}
+
+/** Current profile from /auth/user, with demo data reserved for demo sessions. */
+export function currentStudent(): Student {
+  const user = authenticatedUser()
+  if (!user || isDemoSession()) return STUDENT
+
+  const profile = user.programme
+  const stringValue = (value: unknown) => typeof value === 'string' && value.trim() ? value.trim() : 'Not provided'
+  return {
+    name: stringValue(user.name),
+    nameForForms: stringValue(user.nameForForms),
+    matric: stringValue(user.matric ?? user.matric_no ?? user.matric_number),
+    applicationNumber: stringValue(user.numeration),
+    degree: stringValue(profile?.degree),
+    modeOfStudy: stringValue(profile?.mode_of_study),
+    programme: stringValue(profile?.degree),
+    department: stringValue(profile?.department),
+    faculty: stringValue(profile?.faculty),
+  }
+}
+
+export function currentSession(): string {
+  return authenticatedUser()?.session || CURRENT_SESSION
 }
 
 /* ------------------------------------------------------------------ */
@@ -94,9 +119,8 @@ export const SCHOOL_FEE_SCHEDULE = {
 export const FINANCIALS: FinancialSummary = {
   totalFees: SCHOOL_FEE_TOTAL,
   amountPaid: 180_000,
-  outstanding: SCHOOL_FEE_TOTAL - 180_000,
+  walletBalance: 0,
   session: CURRENT_SESSION,
-  paidPercent: Math.round(180_000 / SCHOOL_FEE_TOTAL * 100),
 }
 
 /* ------------------------------------------------------------------ */
@@ -110,7 +134,7 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
     services: [
       { id: 'generate-invoice', label: 'Pay School Fees', icon: CreditCard },
       { id: 'suspend-programme', label: 'Suspend Programme', icon: Landmark },
-      { id: 'reactivation-form', label: 'Download Reactivation Form', icon: Download },
+      { id: 'reactivation-form', label: 'Reactivate Programme', icon: FileText },
       { id: 'clearance-form', label: 'Admission Clearance Form', icon: FileCheck },
       { id: 'result-notification', label: 'Print Notification of Result', icon: Printer },
     ],

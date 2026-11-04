@@ -1,11 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ChevronDown, CircleAlert, Eye, EyeOff, LifeBuoy, LoaderCircle, X } from 'lucide-react'
 import type { AuthError } from '../data/auth'
-import { signIn } from '../data/auth'
-// import { rememberedMatric, signIn } from '../data/auth'
+import { rememberedMatric, signIn } from '../data/auth'
 import { COLLEGE, CURRENT_SESSION } from '../data/portal'
 import ForgotPasswordForm from './ForgotPasswordForm'
+import NavigationToast from '../components/NavigationToast'
 
 function FieldError({ id, message }: { id: string; message: string }) {
   return (
@@ -41,9 +41,13 @@ const FAQS: ReadonlyArray<{ question: string; answer: string }> = [
 
 export default function LoginPage({ passwordReset = false }: { passwordReset?: boolean }) {
   const navigate = useNavigate()
-  // const [matric, setMatric] = useState(rememberedMatric())
-  const [matric, setMatric] = useState('PG123')
-  const [password, setPassword] = useState('pg@123')
+  const location = useLocation()
+  const logoutWarning = typeof location.state?.logoutWarning === 'string' ? location.state.logoutWarning : ''
+  const [matric, setMatric] = useState(rememberedMatric)
+  const [password, setPassword] = useState('')
+  const busy = useRef(false)
+  const loginController = useRef<AbortController | null>(null)
+  useEffect(() => () => loginController.current?.abort(), [])
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -76,21 +80,28 @@ export default function LoginPage({ passwordReset = false }: { passwordReset?: b
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (busy.current) return
     setAuthError(null)
     if (!validate()) return
 
+    busy.current = true
     setSubmitting(true)
+    const controller = new AbortController()
+    loginController.current = controller
     try {
-      await signIn({ matric, password, remember })
-      navigate('/dashboard', { replace: true })
+      await signIn({ matric, password, remember }, controller.signal)
+      if (!controller.signal.aborted) navigate('/dashboard', { replace: true, state: { flashSuccess: 'Signed in successfully.' } })
     } catch (error) {
-      setAuthError(error as AuthError)
-      setSubmitting(false)
+      if (!controller.signal.aborted) setAuthError(error as AuthError)
+    } finally {
+      busy.current = false
+      if (!controller.signal.aborted) setSubmitting(false)
     }
   }
 
   return (
     <div className="relative flex min-h-screen flex-col items-center bg-[#3D5A80] sm:justify-center sm:px-6 sm:py-12 lg:px-8">
+      <NavigationToast />
       {/* Outer Card Container (white card wraps everything on sm+; mobile holds only the form) */}
       <main className="w-full max-w-5xl bg-transparent p-0 sm:rounded-[36px] sm:bg-white sm:p-5 sm:shadow-2xl lg:p-6">
         <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2 lg:gap-8">
@@ -165,6 +176,7 @@ export default function LoginPage({ passwordReset = false }: { passwordReset?: b
               </p>
             </div>
 
+            {logoutWarning && <p role="status" className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">{logoutWarning}</p>}
             {/* Auth error notification */}
             {authError && (
               <div

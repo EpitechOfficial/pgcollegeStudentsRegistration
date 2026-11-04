@@ -1,7 +1,10 @@
+import { isDemoSession } from './auth'
+import { loadClearanceSummary } from './paymentsApi'
 import { COLLEGE, CURRENT_SESSION, SCHOOL_FEE_ITEMS, STUDENT } from './portal'
 import type { ReceiptDetails } from './feeDocument'
 
 export interface FinancialClearance {
+  summary?: { total: number; paid: number; balance: number; status: string }
   id: string
   session: string
   amountPaid: number
@@ -13,13 +16,13 @@ export interface FinancialClearance {
 }
 
 export function clearanceTotals(record: FinancialClearance) {
+  if (record.summary) return record.summary
   const total = record.items.reduce((sum, item) => sum + item.amount, 0)
   return { total, paid: record.amountPaid, balance: Math.max(0, Math.round((total - record.amountPaid) * 100) / 100) }
 }
 
 export async function loadFinancialClearance(signal: AbortSignal): Promise<{ source: 'demo' | 'backend'; records: FinancialClearance[] }> {
-  const endpoint = import.meta.env.VITE_FINANCIAL_CLEARANCE_URL
-  if (!endpoint) {
+  if (isDemoSession()) {
     await new Promise((resolve) => setTimeout(resolve, 300))
     signal.throwIfAborted()
     return { source: 'demo', records: [{
@@ -30,19 +33,8 @@ export async function loadFinancialClearance(signal: AbortSignal): Promise<{ sou
       items: SCHOOL_FEE_ITEMS, student: { surname: 'Alake', otherNames: 'Emmanuel', applicationNumber: STUDENT.applicationNumber, matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy },
     }] }
   }
-  const response = await fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' }, signal })
-  if (!response.ok) throw new Error('Unable to load financial clearance')
-  const payload = await response.json()
-  const records: unknown = Array.isArray(payload) ? payload : payload?.data
-  if (!Array.isArray(records) || !records.every((record) => {
-    if (!record || typeof record !== 'object' || typeof record.id !== 'string' || typeof record.session !== 'string' || !Number.isFinite(record.amountPaid) || record.amountPaid < 0) return false
-    if (!Array.isArray(record.items) || !record.items.length) return false
-    if (!record.items.every((item: { description?: unknown; amount?: unknown }) => item && typeof item.description === 'string' && typeof item.amount === 'number' && Number.isFinite(item.amount) && item.amount >= 0)) return false
-    if (!record.student || typeof record.student !== 'object' || Array.isArray(record.student) || !Object.values(record.student).every((value) => typeof value === 'string')) return false
-    if (!['passportUrl', 'signatureUrl', 'clearedAt'].every((key) => record[key] == null || typeof record[key] === 'string')) return false
-    return record.clearedAt == null || Number.isFinite(Date.parse(record.clearedAt))
-  })) throw new Error('Invalid financial clearance records')
-  return { source: 'backend', records: records as FinancialClearance[] }
+  const summary = await loadClearanceSummary(signal)
+  return { source: 'backend', records: [{ id: summary.session, session: summary.session, amountPaid: summary.paid, items: [], student: { applicationNumber: summary.applicationNumber }, summary }] }
 }
 
 function escapeHtml(value: string) {

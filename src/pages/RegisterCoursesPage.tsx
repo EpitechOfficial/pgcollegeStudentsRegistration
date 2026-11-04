@@ -1,41 +1,45 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   ArrowLeft,
   BookOpen,
   CircleCheck,
   CircleCheckBig,
+  LockKeyhole,
   LoaderCircle,
   Printer,
   Save,
   Search,
+  TriangleAlert,
 } from 'lucide-react'
 import PortalHeader from '../components/PortalHeader'
 import WelcomeBanner from '../components/WelcomeBanner'
 import PortalFooter from '../components/PortalFooter'
 import SupportChat from '../components/SupportChat'
-import { signOut } from '../data/auth'
+import { useLogout } from '../components/useLogout'
 import { loadCourseRegistration, saveCourseRegistration } from '../data/courseRegistration'
+import { isDemoSession } from '../data/auth'
 import CourseFormsDialog from '../components/CourseFormsDialog'
 import FlashToast from '../components/FlashToast'
 import { useFlashToast } from '../components/useFlashToast'
 import {
   COLLEGE,
-  COURSE_CATALOGUE,
-  CURRENT_SESSION,
-  DEFAULT_SELECTED_CODES,
-  STUDENT,
+  currentSession,
+  currentStudent,
 } from '../data/portal'
 import type { CourseOption, CourseType } from '../types'
 
 type TypeFilter = 'All' | CourseType
 
-const TYPE_FILTERS: TypeFilter[] = ['All', 'Required', 'Elective']
+const TYPE_FILTERS: TypeFilter[] = ['All', 'Core', 'Elective', 'Required']
 const secondary = 'inline-flex items-center justify-center gap-2 rounded-xl border border-navy/20 bg-navy/5 px-4 py-2.5 text-xs font-semibold text-navy hover:bg-navy/10 disabled:opacity-50'
 
 
 export default function RegisterCoursesPage() {
-  const navigate = useNavigate()
+  const student = currentStudent()
+  const [session, setSession] = useState(currentSession)
+  const demo = isDemoSession()
+
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
@@ -44,11 +48,13 @@ export default function RegisterCoursesPage() {
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('All')
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(DEFAULT_SELECTED_CODES),
+    () => new Set<string>(),
   )
   const [confirmed, setConfirmed] = useState(false)
-  const [catalogue, setCatalogue] = useState<CourseOption[]>(COURSE_CATALOGUE)
-  const [minimumUnits, setMinimumUnits] = useState(10)
+  const [selectionSaved, setSelectionSaved] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [catalogue, setCatalogue] = useState<CourseOption[]>([])
+  const [minimumUnits, setMinimumUnits] = useState(0)
   const [locked, setLocked] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -61,8 +67,8 @@ export default function RegisterCoursesPage() {
   useEffect(() => {
     const controller = new AbortController()
     void loadCourseRegistration(controller.signal).then((record) => {
-      if (!controller.signal.aborted) { setCatalogue(record.courses); setSelected(new Set(record.selectedCodes)); setConfirmed(record.confirmed); setLocked(record.locked); setMinimumUnits(record.minimumUnits) }
-    }).catch(() => { if (!controller.signal.aborted) { setLoadError(true); showToast('error', 'Unable to load course registration. Please try again.') } })
+      if (!controller.signal.aborted) { setSession(record.session); setCatalogue(record.courses); setSelected(new Set(record.selectedCodes)); setConfirmed(record.confirmed); setSelectionSaved(true); setLocked(record.locked); setMinimumUnits(record.minimumUnits) }
+    }).catch((error) => { if (!controller.signal.aborted) { setLoadError(true); showToast('error', error instanceof Error ? error.message : 'Unable to load course registration. Please try again.') } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => { controller.abort(); controllerRef.current?.abort() }
   }, [attempt, showToast])
@@ -97,32 +103,37 @@ export default function RegisterCoursesPage() {
       return next
     })
     setConfirmed(false)
+    setSelectionSaved(false)
   }, [locked, loading, loadError])
 
   async function save(confirm: boolean) {
     if (busy.current || locked || loading || loadError) return
-    if (confirm && (selectedCourses.length === 0 || totalUnits < minimumUnits)) { showToast('error', `Select at least ${minimumUnits} units before confirming.`); return }
+    if (confirm && selectedCourses.length === 0) { showToast('error', 'Select at least one course before confirming.'); return }
+    if (confirm && totalUnits < minimumUnits) { showToast('error', `Select at least ${minimumUnits} units before confirming.`); return }
     busy.current = true; setAction(confirm ? 'confirm' : 'draft')
     const controller = new AbortController(); controllerRef.current = controller
     try {
       await saveCourseRegistration(selectedCourses, confirm, controller.signal)
-      if (!controller.signal.aborted) { setConfirmed(confirm); showToast('success', import.meta.env.VITE_COURSE_REGISTRATION_URL ? confirm ? 'Course registration confirmed.' : 'Draft saved.' : confirm ? 'Selection saved on this device as a preview.' : 'Draft saved on this device.') }
-    } catch (error) { if (!controller.signal.aborted) showToast('error', error instanceof Error ? error.message : 'Unable to save course registration.') }
+      if (!controller.signal.aborted) { setSelectionSaved(true); setConfirmed(confirm); if (confirm) setLocked(true); showToast('success', demo ? confirm ? 'Course registration confirmed and locked.' : 'Selection saved on this device.' : confirm ? 'Course registration confirmed and locked.' : 'Course selection saved.') }
+    } catch (error) { if (!controller.signal.aborted) { showToast('error', error instanceof Error ? error.message : 'Unable to save course registration.'); setLoading(true); setAttempt((value) => value + 1) } }
     finally { busy.current = false; if (!controller.signal.aborted) setAction(null) }
+  }
+  function requestConfirmation() {
+    if (selectedCourses.length === 0) { showToast('error', 'Select at least one course before confirming.'); return }
+    if (totalUnits < minimumUnits) { showToast('error', `Select at least ${minimumUnits} units before confirming.`); return }
+    if (!selectionSaved) { showToast('error', 'Save your course selection before confirming.'); return }
+    setConfirmOpen(true)
   }
   function handlePrint() {
     if (!confirmed) { showToast('error', 'Confirm your selection before printing.'); return }
     setPrintOpen(true)
   }
-  const handleLogout = useCallback(() => {
-    signOut()
-    navigate('/', { replace: true })
-  }, [navigate])
+  const { logout: handleLogout, loggingOut } = useLogout()
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F5F7F9]">
       {/* Top Header - No Sidebar */}
-        <PortalHeader onLogout={handleLogout} />
+        <PortalHeader onLogout={() => void handleLogout()} loggingOut={loggingOut} />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* Back to the dashboard */}
@@ -149,30 +160,19 @@ export default function RegisterCoursesPage() {
             </p>
           </div>
 
-          <span
+          {locked ? <div role="status" className="flex w-full max-w-sm items-start gap-3 self-start rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 shadow-sm sm:w-auto"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><LockKeyhole className="h-5 w-5" aria-hidden="true" /></span><div><p className="text-sm font-bold">Registration locked</p><p className="mt-0.5 text-xs leading-5 text-amber-800">Your courses are confirmed. Contact Management if you need to make changes.</p></div></div> : <span
             className={`inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${
               confirmed
                 ? 'border-[#0A2B4F]/15 bg-[#0A2B4F]/5 text-[#0A2B4F]'
                 : 'border-[#E5E7EB] bg-white text-[#495057]'
             }`}
           >
-            {confirmed ? (
-              <CircleCheck className="h-3.5 w-3.5 text-[#0A2B4F]" aria-hidden="true" />
-            ) : (
-              <span
-                className="h-2 w-2 rounded-full border border-[#6C757D]"
-                aria-hidden="true"
-              />
-            )}
+            {confirmed ? <CircleCheck className="h-3.5 w-3.5 text-[#0A2B4F]" aria-hidden="true" /> : <span className="h-2 w-2 rounded-full border border-[#6C757D]" aria-hidden="true" />}
             {confirmed ? 'Selection confirmed' : 'Not yet confirmed'}
-          </span>
+          </span>}
         </div>
 
-        {loading && <p role="status" className="mb-4 flex items-center gap-2 text-sm text-navy"><LoaderCircle className="h-4 w-4 animate-spin" />Loading registration…</p>}
-        {loadError && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">Unable to load course registration. <button type="button" className="font-semibold underline" onClick={() => { setLoading(true); setLoadError(false); setAttempt((value) => value + 1) }}>Retry</button></div>}
-        {locked && <p className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Student information is locked. Course editing is disabled.</p>}
-        <p className="mb-4 text-xs text-slate-500">Minimum registration: {minimumUnits} units.
-          {!import.meta.env.VITE_COURSE_REGISTRATION_URL && ' Backend is not connected; selections are saved on this device only.'}</p>
+        <p className="mb-4 text-xs text-slate-500">{minimumUnits > 0 && `Minimum registration: ${minimumUnits} units. `}{locked ? 'Your confirmed selection is now read-only.' : demo ? 'Demo selections are saved on this device only.' : 'Save your selection before confirming. Confirmation locks registration; only Management can unlock it.'}</p>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
           {/* ==================== Available courses ==================== */}
           <section
@@ -188,6 +188,7 @@ export default function RegisterCoursesPage() {
                 </div>
                 <input
                   type="search"
+                  disabled={loading || loadError}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search courses"
@@ -207,6 +208,7 @@ export default function RegisterCoursesPage() {
               </label>
               <select
                 id="course-type-filter"
+                disabled={loading || loadError}
                 value={typeFilter}
                 onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}
                 className="rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#212529] transition-colors focus:border-[#0A2B4F] focus:outline-none focus:ring-2 focus:ring-[#0A2B4F]/15"
@@ -218,12 +220,22 @@ export default function RegisterCoursesPage() {
                 ))}
               </select>
               <span className="text-xs text-[#6C757D]">
-                {visibleCourses.length} {visibleCourses.length === 1 ? 'course' : 'courses'} found
+                {!loading && !loadError && `${visibleCourses.length} ${visibleCourses.length === 1 ? 'course' : 'courses'} found`}
               </span>
             </div>
 
             {/* Course table */}
-            <div className="overflow-x-auto">
+            {loading ? (
+              <div role="status" aria-live="polite" className="flex min-h-48 items-center justify-center gap-3 px-5 py-12 text-sm text-navy">
+                <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />
+                <span>Loading registration…</span>
+              </div>
+            ) : loadError ? (
+              <div role="alert" className="flex min-h-48 flex-col items-center justify-center gap-3 px-5 py-12 text-center text-sm text-red-700">
+                <p>Unable to load course registration.</p>
+                <button type="button" className={secondary} onClick={() => { setLoading(true); setLoadError(false); setAttempt((value) => value + 1) }}>Retry</button>
+              </div>
+            ) : <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] border-collapse text-left">
                 <thead>
                   <tr className="bg-slate-50 text-2xs uppercase tracking-wide text-[#495057]">
@@ -272,8 +284,7 @@ export default function RegisterCoursesPage() {
                           <span
                             className={`inline-flex rounded-md px-1.5 py-0.5 text-2xs font-semibold ${
                               course.type === 'Required'
-                                ? 'bg-[#0A2B4F]/5 text-[#0A2B4F]'
-                                : 'bg-[#FFBB00]/15 text-[#B98400]'
+                                ? 'bg-[#0A2B4F]/5 text-[#0A2B4F]' : course.type === 'Core' ? 'bg-[#4BB543]/5 text-[#4BB543]' : 'bg-[#FFBB00]/15 text-[#B98400]'
                             }`}
                           >
                             {course.type}
@@ -301,7 +312,7 @@ export default function RegisterCoursesPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+            </div>}
           </section>
 
           {/* ==================== Your selection ==================== */}
@@ -362,25 +373,27 @@ export default function RegisterCoursesPage() {
             <div className="space-y-2.5 p-4 sm:p-5">
               <button
                 type="button"
-                onClick={() => void save(true)}
-                disabled={selectedCourses.length === 0 || loading || loadError || locked || !!action || confirmed}
-                aria-busy={action === 'confirm'}
+                onClick={() => void save(false)}
+                disabled={loading || loadError || locked || !!action || selectionSaved}
+                aria-busy={action === 'draft'}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0A2B4F] text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#12335A] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {action === 'confirm' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CircleCheckBig className="h-4 w-4 text-[#FFBB00]" aria-hidden="true" />}
-                {action === 'confirm' ? 'Confirming…' : 'Confirm selection'}
+                {action === 'draft' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 text-[#FFBB00]" aria-hidden="true" />}
+                {action === 'draft' ? 'Saving…' : selectionSaved ? 'Selection saved' : 'Save selection'}
               </button>
 
               <button
                 type="button"
-                onClick={() => void save(false)}
-                disabled={loading || loadError || locked || !!action}
-                aria-busy={action === 'draft'}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-white text-sm font-semibold text-[#212529] transition-colors hover:border-[#0A2B4F]/30 hover:bg-slate-50"
+                onClick={requestConfirmation}
+                disabled={selectedCourses.length === 0 || !selectionSaved || loading || loadError || locked || !!action || confirmed}
+                aria-busy={action === 'confirm'}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#0A2B4F]/20 bg-white text-sm font-semibold text-[#0A2B4F] transition-colors hover:bg-[#0A2B4F]/5 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {action === 'draft' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 text-[#1B3764]" aria-hidden="true" />}
-                {action === 'draft' ? 'Saving…' : 'Save draft'}
+                {action === 'confirm' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CircleCheckBig className="h-4 w-4" aria-hidden="true" />}
+                {action === 'confirm' ? 'Confirming…' : 'Confirm selection'}
               </button>
+
+              {!selectionSaved && selectedCourses.length > 0 && <p className="text-center text-2xs font-medium text-amber-700">Save your changes before confirming.</p>}
 
               <button
                 type="button"
@@ -393,7 +406,7 @@ export default function RegisterCoursesPage() {
               </button>
 
               <p className="pt-1 text-2xs leading-relaxed text-[#6C757D]">
-                {!import.meta.env.VITE_COURSE_REGISTRATION_URL ? 'Printed output is a preview, not an official registration form.' : 'Print your saved registration after confirmation.'}
+                {demo ? 'Printed output is a demo preview.' : 'Print your saved registration after confirmation.'}
               </p>
             </div>
           </section>
@@ -405,7 +418,7 @@ export default function RegisterCoursesPage() {
             {COLLEGE.shortName}, {COLLEGE.university}
           </span>
           <span>
-            Student registration · {CURRENT_SESSION} · {STUDENT.matric}
+            Student registration · {session} · {student.matric}
           </span>
         </div>
       </main>
@@ -417,7 +430,8 @@ export default function RegisterCoursesPage() {
       <SupportChat />
 
       <FlashToast toast={toast} onDismiss={dismissToast} />
-      {printOpen && <CourseFormsDialog onClose={() => setPrintOpen(false)} initialRecord={import.meta.env.VITE_COURSE_REGISTRATION_URL ? undefined : { id: 'selection-preview', applicationNumber: STUDENT.applicationNumber, session: CURRENT_SESSION, registeredAt: new Date().toISOString(), courses: selectedCourses, student: { surname: STUDENT.name.split(' ')[0], otherNames: STUDENT.name.split(' ').slice(1).join(' '), matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy } }} />}
+      {printOpen && <CourseFormsDialog onClose={() => setPrintOpen(false)} />}
+      {confirmOpen && <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[#071D36]/65 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirmOpen(false) }}><div role="alertdialog" aria-modal="true" aria-labelledby="confirm-course-title" aria-describedby="confirm-course-description" className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-2xl"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-700"><TriangleAlert className="h-7 w-7" /></div><h2 id="confirm-course-title" className="mt-4 text-xl font-bold text-[#212529]">Confirm course registration?</h2><p id="confirm-course-description" className="mt-2 text-sm leading-6 text-[#495057]">This action is final. After confirmation, you cannot add or remove courses unless the Management unlocks your registration.</p><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-center"><button type="button" onClick={() => setConfirmOpen(false)} className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-[#212529] hover:bg-slate-50">Review Courses</button><button type="button" onClick={() => { setConfirmOpen(false); void save(true) }} className="rounded-xl bg-[#0A2B4F] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#12335A]">Yes, Confirm and Lock</button></div></div></div>}
     </div>
   )
 }

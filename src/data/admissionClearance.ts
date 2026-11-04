@@ -1,4 +1,6 @@
 import { COLLEGE, CURRENT_SESSION, STUDENT } from './portal'
+import { isDemoSession, restoreSession } from './auth'
+import { apiUrl } from './api'
 
 type RecordData = Record<string, unknown>
 export interface AdmissionClearanceData {
@@ -17,10 +19,23 @@ function isRecord(value: unknown): value is RecordData {
   return !!value && typeof value === 'object' && !Array.isArray(value)
 }
 
-/** Configure an authenticated endpoint returning these five sections (or { data: sections }). */
+export function admissionClearanceData(value: unknown): AdmissionClearanceData {
+  if (!isRecord(value) || !isRecord(value.biodata) || !isRecord(value.programme) ||
+      !Array.isArray(value.sponsorship) || !value.sponsorship.every(isRecord) ||
+      !Array.isArray(value.educational_records) || !value.educational_records.every(isRecord)) {
+    throw new Error('Admission records have an unexpected format.')
+  }
+  return {
+    applicant: { application_number: value.application_number, name: value.biodata.name },
+    application: { ...value.programme, form_number: value.form_number, session: value.session },
+    biodata: { ...value.biodata, local_government_area: value.biodata.local_govt_area, passport_photo_url: value.biodata.passport_file },
+    sponsors: value.sponsorship,
+    education: value.educational_records,
+  }
+}
+
 export async function loadAdmissionClearance(signal: AbortSignal): Promise<AdmissionClearanceResult> {
-  const endpoint = import.meta.env.VITE_ADMISSION_CLEARANCE_URL
-  if (!endpoint) {
+  if (isDemoSession()) {
     await new Promise((resolve) => setTimeout(resolve, 300))
     signal.throwIfAborted()
     return {
@@ -32,16 +47,20 @@ export async function loadAdmissionClearance(signal: AbortSignal): Promise<Admis
       },
     }
   }
-  const response = await fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' }, signal })
-  if (!response.ok) throw new Error('Unable to retrieve admission records.')
-  const payload: unknown = await response.json()
-  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload
-  if (!isRecord(data) || !isRecord(data.applicant) || !isRecord(data.application) || !isRecord(data.biodata) ||
-      !Array.isArray(data.sponsors) || !data.sponsors.every(isRecord) ||
-      !Array.isArray(data.education) || !data.education.every(isRecord)) {
-    throw new Error('Admission records have an unexpected format.')
+  const token = restoreSession()
+  if (!token) throw new Error('Please sign in again.')
+  const response = await fetch(apiUrl('clearance'), {
+    headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+    signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
+  })
+  let payload: unknown
+  try { payload = await response.json() }
+  catch { throw new Error('The server returned an invalid admission clearance response. Please try again.') }
+  if (!isRecord(payload)) throw new Error('The server returned an invalid admission clearance response.')
+  if (!response.ok || payload.success !== true) {
+    throw new Error(typeof payload.message === 'string' ? payload.message : 'Unable to retrieve admission records.')
   }
-  return { source: 'backend', data: data as unknown as AdmissionClearanceData }
+  return { source: 'backend', data: admissionClearanceData(payload.data) }
 }
 
 function pick(record: RecordData, keys: string[], fallback = 'Not provided'): string {
@@ -80,8 +99,8 @@ export function buildAdmissionClearanceDocument(result: AdmissionClearanceResult
   const brand = new URL(`${import.meta.env.BASE_URL}brand/`, window.location.origin)
   const sponsorRows = sponsors.map((record) => `<tr><td>${escapeHtml(pick(record, ['name', 'sponsor_name']))}</td><td>${escapeHtml(pick(record, ['address', 'sponsor_address']))}</td></tr>`).join('') || '<tr><td colspan="2">No sponsorship record provided.</td></tr>'
   const educationRows = education.map((record) => {
-    const period = (prefix: string) => [pick(record, [`${prefix}_month`], ''), pick(record, [`${prefix}_year`], '')].filter(Boolean).join(', ') || 'Not provided'
-    const cells = [pick(record, ['school', 'institution', 'institution_name']), period('from'), period('to'), pick(record, ['degree', 'degree_name', 'qualification']), date(pick(record, ['award_date', 'date_award', 'date_of_award'], '')), pick(record, ['course', 'course_of_study', 'discipline']), pick(record, ['class', 'class_name', 'obtained'])]
+    const period = (prefix: string) => pick(record, [prefix], '') || [pick(record, [`${prefix}_month`], ''), pick(record, [`${prefix}_year`], '')].filter(Boolean).join(', ') || 'Not provided'
+    const cells = [pick(record, ['school', 'institution', 'institution_name']), period('from'), period('to'), pick(record, ['degree', 'degree_name', 'qualification']), date(pick(record, ['award_date', 'date_award', 'date_of_award'], '')), pick(record, ['course', 'course_of_study', 'discipline']), pick(record, ['class_obtained', 'class', 'class_name', 'obtained'])]
     return `<tr>${cells.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`
   }).join('') || '<tr><td colspan="7">No educational record provided.</td></tr>'
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admission Clearance Form</title><style>

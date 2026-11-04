@@ -1,32 +1,32 @@
+import { isDemoSession } from './auth'
+import { apiUrl } from './api'
+import { medicalObject, medicalRequest } from './medicalApi'
+export interface PassportRecord { url: string | null; locked: boolean }
 let draftUrl: string | null = null
-function passportUrl(payload: unknown): string | null {
-  const record = payload as { data?: { passportUrl?: unknown }; passportUrl?: unknown }
-  const value = record?.data?.passportUrl ?? record?.passportUrl
-  if (value == null || value === '') return null
-  if (typeof value !== 'string') throw new Error('Invalid passport response')
-  const url = new URL(value, window.location.origin)
-  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Invalid passport URL')
+function passportUrl(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) throw new Error('Passport URL missing from response.')
+  const url = new URL(value, apiUrl('medical/passport'))
+  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Invalid passport URL.')
   return url.href
 }
-export async function loadPassport(signal: AbortSignal): Promise<string | null> {
-  const endpoint = import.meta.env.VITE_PASSPORT_URL
-  if (!endpoint) return draftUrl
-  const response = await fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' }, signal })
-  if (!response.ok) throw new Error('Unable to load passport')
-  return passportUrl(await response.json())
+export async function loadPassport(signal: AbortSignal): Promise<PassportRecord> {
+  if (isDemoSession()) return { url: draftUrl, locked: false }
+  const payload = await medicalRequest('medical/passport', signal)
+  const data = medicalObject(payload.data)
+  if (typeof payload.is_locked !== 'boolean' || typeof data.has_passport !== 'boolean') throw new Error('Invalid passport response.')
+  return { url: data.has_passport ? passportUrl(data.url) : null, locked: payload.is_locked }
 }
 export async function uploadPassport(file: File, signal: AbortSignal): Promise<string> {
-  const endpoint = import.meta.env.VITE_PASSPORT_URL
-  if (!endpoint) {
+  if (!['image/jpeg', 'image/png'].includes(file.type) || file.size === 0 || file.size > 2 * 1024 * 1024) throw new Error('Choose a JPG or PNG image up to 2 MB.')
+  if (isDemoSession()) {
     if (draftUrl) URL.revokeObjectURL(draftUrl)
     draftUrl = URL.createObjectURL(file)
     return draftUrl
   }
   const form = new FormData()
-  form.append('passport', file)
-  const response = await fetch(endpoint, { method: 'POST', credentials: 'include', headers: { Accept: 'application/json' }, body: form, signal })
-  if (!response.ok) throw new Error('Unable to upload passport')
-  const url = passportUrl(await response.json())
-  if (!url) throw new Error('Passport URL missing from upload response')
-  return url
+  form.append('photo', file)
+  const payload = await medicalRequest('medical/passport', signal, 'POST', form)
+  const url = new URL(passportUrl(medicalObject(payload.data).url))
+  url.searchParams.set('v', String(Date.now()))
+  return url.href
 }

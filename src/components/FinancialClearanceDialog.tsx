@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, Download, LoaderCircle, Printer, X } from 'lucide-react'
 import { buildFinancialClearanceDocument, clearanceTotals, loadFinancialClearance, type FinancialClearance } from '../data/financialClearance'
-import { CURRENT_SESSION, formatNaira } from '../data/portal'
+import { currentSession, formatNaira } from '../data/portal'
 import FlashToast from './FlashToast'
 import { useFlashToast } from './useFlashToast'
 
@@ -24,7 +24,7 @@ export default function FinancialClearanceDialog({ onClose, onPayOutstanding }: 
   const [action, setAction] = useState<'print' | 'download' | null>(null)
   const { toast, showToast, dismissToast } = useFlashToast()
   const html = useMemo(() => selected ? buildFinancialClearanceDocument(selected, source === 'demo') : '', [selected, source])
-  const printable = !!selected && clearanceTotals(selected).balance === 0
+  const printable = !!selected && !selected.summary && clearanceTotals(selected).balance === 0
 
   useEffect(() => {
     mounted.current = true
@@ -37,8 +37,8 @@ export default function FinancialClearanceDialog({ onClose, onPayOutstanding }: 
     const controller = new AbortController()
     void loadFinancialClearance(controller.signal).then((result) => {
       if (!controller.signal.aborted) { setRecords(result.records); setSource(result.source) }
-    }).catch(() => {
-      if (!controller.signal.aborted) { setError('Unable to load financial clearance. Please try again.'); showToast('error', 'Unable to load financial clearance.') }
+    }).catch((failure: unknown) => {
+      if (!controller.signal.aborted) { const message = failure instanceof Error ? failure.message : 'Unable to load financial clearance. Please try again.'; setError(message); showToast('error', message) }
     }).finally(() => { if (!controller.signal.aborted) setFetching(false) })
     return () => controller.abort()
   }, [attempt, showToast])
@@ -69,8 +69,8 @@ export default function FinancialClearanceDialog({ onClose, onPayOutstanding }: 
         {/* {source === 'demo' && <p className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Demo session data. Backend financial clearance is not connected yet.</p>} */}
         {records.length ? <div className="space-y-4">{records.map((record) => {
           const totals = clearanceTotals(record)
-          const status = totals.balance > 0 ? 'Outstanding Balance' : 'Fully Paid'
-          return <article key={record.id} className="rounded-xl border border-slate-200 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-bold text-navy">{record.session} Session</h3><p className="mt-1 text-xs text-slate-500">Application No: <span className="font-semibold text-navy">{record.student.applicationNumber || 'Not provided'}</span></p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${status === 'Fully Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{status}</span></div><dl className="my-5 grid grid-cols-1 gap-4 sm:grid-cols-3">{[['Total Fees', totals.total], ['Confirmed Payments', totals.paid], ['Outstanding Balance', totals.balance]].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 text-lg font-bold tabular-nums text-navy">{formatNaira(Number(value))}</dd></div>)}</dl><div className="flex flex-wrap items-center justify-end gap-3">{totals.balance > 0 && record.session === CURRENT_SESSION && <button type="button" className={primary} onClick={onPayOutstanding}>Pay Outstanding Fees</button>}<button type="button" className={secondary} onClick={() => { setReady(false); setSelected(record) }}>{totals.balance === 0 ? 'View Financial Clearance' : 'Preview Form'}</button></div></article>
+          const status = record.summary?.status || (totals.balance > 0 ? 'Outstanding Balance' : 'Fully Paid')
+          return <article key={record.id} className="rounded-xl border border-slate-200 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-bold text-navy">{record.session} Session</h3><p className="mt-1 text-xs text-slate-500">Application No: <span className="font-semibold text-navy">{record.student.applicationNumber || 'Not provided'}</span></p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${status === 'Fully Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>{status}</span></div><dl className="my-5 grid grid-cols-1 gap-4 sm:grid-cols-3">{[['Total Fees', totals.total], ['Confirmed Payments', totals.paid], ['Outstanding Balance', totals.balance]].map(([label, value]) => <div key={label}><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 text-lg font-bold tabular-nums text-navy">{formatNaira(Number(value))}</dd></div>)}</dl><div className="flex flex-wrap items-center justify-end gap-3">{totals.balance > 0 && record.session === currentSession() && <button type="button" className={primary} onClick={onPayOutstanding}>Pay Outstanding Fees</button>}<button type="button" disabled={!!record.summary} className={secondary} onClick={() => { setReady(false); setSelected(record) }}>{record.summary ? 'Clearance document unavailable' : totals.balance === 0 ? 'View Financial Clearance' : 'Preview Form'}</button></div></article>
         })}</div> : <p className="rounded-xl border border-dashed p-10 text-center text-sm text-slate-500">No financial clearance records found.</p>}
       </>}
     </div>}

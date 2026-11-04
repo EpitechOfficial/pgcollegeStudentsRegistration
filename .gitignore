@@ -73,4 +73,8 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
+/tests
+New Registration Portal API.postman_collection.json
+/checks
+/integration/application-frontend/README.md
 

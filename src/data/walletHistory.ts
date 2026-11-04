@@ -1,3 +1,6 @@
+import { isDemoSession } from './auth'
+import { currentStudent } from './portal'
+import { walletRequest, walletObject, walletAmount } from './wallet'
 export interface WalletTransaction {
   id: string
   refno: string
@@ -16,19 +19,27 @@ export function walletTransactionDate(value: string): number {
   const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value) ? `${value.replace(' ', 'T')}+01:00` : value
   return Date.parse(normalized)
 }
-export async function loadWalletHistory(signal: AbortSignal): Promise<WalletTransaction[]> {
-  const endpoint = import.meta.env.VITE_WALLET_HISTORY_URL
-  if (!endpoint) return []
-  const response = await fetch(endpoint, { credentials: 'include', signal, headers: { Accept: 'application/json' } })
-  if (!response.ok) throw new Error('Unable to load wallet history.')
-  const payload = await response.json()
-  const records: unknown = Array.isArray(payload) ? payload : payload?.data
-  if (!Array.isArray(records)) throw new Error('Invalid wallet history response.')
-  return records.map((record) => {
-    if (!record || typeof record !== 'object' || !['refno', 'appno', 'type', 'status', 'created_at'].every((key) => typeof record[key] === 'string') || !['string', 'number'].includes(typeof record.id)) throw new Error('Invalid wallet transaction.')
-    const amount = typeof record.amount === 'string' && /^\d+(\.\d+)?$/.test(record.amount) ? Number(record.amount) : record.amount
-    if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0 || !Number.isFinite(walletTransactionDate(record.created_at))) throw new Error('Invalid wallet transaction amount or date.')
-    if (!['purpose', 'pid', 'paystack_reference', 'saanapay_reference'].every((key) => record[key] == null || typeof record[key] === 'string' || (key === 'pid' && typeof record[key] === 'number'))) throw new Error('Invalid wallet transaction details.')
-    return { ...record, id: String(record.id), amount, type: record.type.toLowerCase(), status: record.status.toLowerCase(), purpose: record.purpose ?? null, pid: record.pid == null ? null : String(record.pid), paystack_reference: record.paystack_reference ?? null, saanapay_reference: record.saanapay_reference ?? null } as WalletTransaction
-  }).sort((left, right) => walletTransactionDate(right.created_at) - walletTransactionDate(left.created_at))
+export interface WalletHistoryFilters { page?: number; type?: string; status?: string; search?: string }
+export async function loadWalletHistory(signal: AbortSignal, filters: WalletHistoryFilters = {}) {
+  if (isDemoSession()) return { records: [] as WalletTransaction[], balance: 0, total: 0, currentPage: 1, lastPage: 1 }
+  const query = new URLSearchParams({ page: String(filters.page || 1), per_page: '20' })
+  for (const key of ['type', 'status', 'search'] as const) if (filters[key] && filters[key] !== 'all') query.set(key, filters[key]!.trim())
+  const data = await walletRequest('wallet/history?' + query, signal)
+  if (!Array.isArray(data.transactions)) throw new Error('Invalid wallet history response.')
+  const records = data.transactions.map(value => {
+    const record = walletObject(value)
+    if (!['refno', 'type', 'status', 'created_at'].every(key => typeof record[key] === 'string') || !['number', 'string'].includes(typeof record.id)) throw new Error('Invalid wallet transaction.')
+    if (!Number.isFinite(walletTransactionDate(record.created_at as string))) throw new Error('Invalid transaction date.')
+    return {
+      id: String(record.id), refno: String(record.refno), appno: typeof record.appno === 'string' ? record.appno : currentStudent().applicationNumber,
+      type: String(record.type), status: String(record.status), created_at: String(record.created_at), amount: walletAmount(record.amount),
+      purpose: typeof record.purpose === 'string' ? record.purpose : null,
+      pid: record.pid == null ? null : String(record.pid),
+      paystack_reference: typeof record.paystack_reference === 'string' ? record.paystack_reference : null,
+      saanapay_reference: typeof record.saanapay_reference === 'string' ? record.saanapay_reference : null,
+    }
+  })
+  const currentPage = Number(data.current_page), lastPage = Number(data.last_page), total = Number(data.total)
+  if (![currentPage, lastPage, total].every(Number.isInteger) || currentPage < 1 || lastPage < 1 || total < 0) throw new Error('Invalid wallet history pagination.')
+  return { records, balance: walletAmount(data.balance), total, currentPage, lastPage }
 }
