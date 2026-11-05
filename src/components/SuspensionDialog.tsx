@@ -45,7 +45,7 @@ function sessionYear(value: string): number | null {
   return match[2] === String(year + 1).slice(-match[2].length) ? year : null
 }
 
-export default function SuspensionDialog({ onClose }: { onClose: () => void }) {
+export default function SuspensionDialog({ onClose, onSubmitted }: { onClose: () => void; onSubmitted?: (message: string) => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const mounted = useRef(false)
@@ -139,8 +139,11 @@ export default function SuspensionDialog({ onClose }: { onClose: () => void }) {
       } else {
         const result = exists ? await updateSuspension(cleaned, controller.signal, baseline.current) : await submitSuspension(cleaned, controller.signal)
         if (controller.signal.aborted) return
-        showToast('success', typeof result.message === 'string' ? result.message : exists ? 'Suspension request updated.' : 'Suspension request submitted.')
+        const message = typeof result.message === 'string' ? result.message : exists ? 'Suspension request updated.' : 'Suspension request submitted.'
         setExists(true); setStatus('pending'); baseline.current = cleaned
+        onSubmitted?.(message)
+        onClose()
+        return
       }
       if (!mounted.current) return
       setValues(cleaned); setSaved(true)
@@ -161,17 +164,17 @@ export default function SuspensionDialog({ onClose }: { onClose: () => void }) {
     <dialog ref={dialogRef} onCancel={onClose} aria-labelledby="suspension-title" className="suspension-dialog fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-3xl overflow-hidden rounded-2xl bg-white p-0 text-ink shadow-2xl backdrop:bg-[#071D36]/60">
       <FlashToast toast={toast} onDismiss={dismissToast} />
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 p-5">
-        <div><h2 id="suspension-title" className="text-lg font-bold">Suspension of Registration</h2><p className="mt-1 text-xs text-slate-500">Complete your registration, sponsor and employer details.</p></div>
+        <div><h2 id="suspension-title" className="text-lg font-bold">Suspension of Programme</h2><p className="mt-1 text-xs text-slate-500">Complete your registration, sponsor and employer details.</p></div>
         <button type="button" onClick={onClose} aria-label="Close suspension form" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button>
       </div>
       {loading ? <p role="status" className="flex items-center justify-center gap-2 p-10"><LoaderCircle className="h-5 w-5 animate-spin" />Loading suspension details?</p> : loadError ? <div className="p-8 text-center"><p role="alert">{loadError}</p><button type="button" className={primaryClass} onClick={() => { setLoading(true); setLoadError(''); setAttempt(value => value + 1) }}>Retry</button></div> : <form ref={formRef} onSubmit={(event) => { event.preventDefault(); void save() }} className="flex min-h-0 flex-1 flex-col" onInvalid={() => showToast('error', 'Check the highlighted field and complete all required information.')}>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-5">
           {/* <p className="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">Demo preview: requests are saved on this browser only. Your programme status will change only after submission and approval through the college.</p> */}
           {values.applicationNumber && <p className="text-sm">Application Number: <b>{values.applicationNumber}</b></p>}
-          {exists && <p className="rounded-xl bg-navy/5 p-3 text-sm">Status: <b className="capitalize">{status || 'Unavailable'}</b>{locked && ' ? This request is read-only. Contact the Management for changes.'}</p>}
+          {exists && <p className="rounded-xl bg-navy/5 p-3 text-sm">Status: <b className="capitalize">{status || 'Unavailable'}</b>{locked && ' This request is read-only. Contact the Management for changes.'}</p>}
           <p className="text-xs text-slate-500">Fields marked * are required. Enter your full name with your surname first.</p>
           <fieldset disabled={saving || locked}>
-            <legend className="mb-4 text-sm font-bold text-navy">Registration details</legend>
+            <legend className="mb-4 text-sm font-bold text-navy">Programme details</legend>
             <div className="grid gap-4 sm:grid-cols-2">
               <div><label htmlFor="suspension-session" className="text-xs font-semibold">Session <span className="text-red-600">*</span></label>
                 <select id="suspension-session" required value={values.session ?? ''} onChange={(event) => change('session', event.target.value)} className={inputClass}><option value="">Select Session</option>{[...new Set([values.session, ...SESSIONS].filter(Boolean))].map((session) => <option key={session}>{session}</option>)}</select>

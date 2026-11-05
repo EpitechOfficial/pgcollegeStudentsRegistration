@@ -88,7 +88,7 @@ function mapPayment(value: unknown, index: number, confirmed = false): PaymentRe
     tellerNumber: identifier(record.tellerNumber, record.teller_number, record.tellerno, record.teller_no) ?? null,
     cashier: text(record.cashier, record.cashier_name) ?? null,
     paymentMode: text(record.paymentMode, record.payment_mode, record.mode_of_payment, record.channel) ?? null,
-    receiptDetails: { surname: text(profile.surname, record.surname), otherNames: text(profile.other_names, profile.otherNames, record.other_names), applicationNumber, matric: text(profile.matricno, profile.matric, record.matricno), faculty: text(profile.faculty, record.faculty), department: text(profile.department, record.department), degree: text(profile.degree, record.degree), modeOfStudy: text(profile.mode_of_study, record.mode_of_study) },
+    receiptDetails: { fullName: text(profile.name, record.name), surname: text(profile.surname, record.surname), otherNames: text(profile.other_names, profile.otherNames, record.other_names), applicationNumber, matric: text(profile.matricno, profile.matric, record.matricno), faculty: text(profile.faculty, record.faculty), department: text(profile.department, record.department), degree: text(profile.degree, record.degree), modeOfStudy: text(profile.mode_of_study, record.mode_of_study), bankName: text(record.mode_of_payment, record.payment_mode, record.channel) },
   }
 }
 
@@ -108,6 +108,26 @@ export async function loadPayments(signal: AbortSignal, history = false): Promis
   const records = Array.isArray(data) ? data : Array.isArray(container?.receipts) ? container.receipts : Array.isArray(container?.records) ? container.records : Array.isArray(container?.data) ? container.data : null
   if (!records) throw new Error('Invalid payment records')
   return { source: 'backend', records: records.map((record, index) => mapPayment(record, index, !history)).filter((record): record is PaymentRecord => !!record) }
+}
+
+export async function loadSchoolFeeReceipt(invoiceNumber: string, signal: AbortSignal): Promise<PaymentRecord> {
+  const token = restoreSession()
+  if (!token) throw new Error('Please sign in again.')
+  const response = await fetch(apiUrl(`payments/receipt/${encodeURIComponent(invoiceNumber)}`), {
+    headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+    signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
+  })
+  let payload: unknown
+  try { payload = await response.json() } catch { /* handled below */ }
+  const root = object(payload)
+  if (!response.ok || root?.success !== true) {
+    throw new Error(text(root?.message) ?? 'Unable to load this school fee receipt.')
+  }
+  const record = mapPayment(root.data, 0, true)
+  if (!record || record.feeType !== 'school-fees' || !record.items.length) {
+    throw new Error('The server returned incomplete school fee receipt details.')
+  }
+  return record
 }
 
 export function receiptablePayments(records: PaymentRecord[]): PaymentRecord[] {

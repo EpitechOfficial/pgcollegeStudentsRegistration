@@ -134,7 +134,8 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
     services: [
       { id: 'generate-invoice', label: 'Pay School Fees', icon: CreditCard },
       { id: 'suspend-programme', label: 'Suspend Programme', icon: Landmark },
-      { id: 'reactivation-form', label: 'Reactivate Programme', icon: FileText },
+      { id: 'reactivation-suspension', label: 'Reactivate Suspended Programme', icon: FileText },
+      { id: 'reactivation-lapsed', label: 'Reactivate Lapsed Programme', icon: FileText },
       { id: 'clearance-form', label: 'Admission Clearance Form', icon: FileCheck },
       { id: 'result-notification', label: 'Print Notification of Result', icon: Printer },
     ],
@@ -145,9 +146,9 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
     note: 'Fees, receipts and financial clearance',
     services: [
       { id: 'schedule-of-fees', label: 'Schedule of Fees', icon: Receipt },
-      { id: 'print-receipt', label: 'Print Receipt', icon: ReceiptText },
+      { id: 'payment-record', label: 'Payment Records', icon: CreditCard },
+      // { id: 'print-receipt', label: 'Print Receipt', icon: ReceiptText },
       { id: 'financial-clearance', label: 'Print Financial Clearance', icon: BadgeCheck },
-      { id: 'payment-record', label: 'Payment Record', icon: CreditCard },
     ],
   },
   {

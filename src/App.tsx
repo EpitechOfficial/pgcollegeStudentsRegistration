@@ -4,7 +4,7 @@ import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import DashboardPage from './pages/DashboardPage'
 import RegisterCoursesPage from './pages/RegisterCoursesPage'
-import { validateSession } from './data/auth'
+import { authenticatedUser, validateSession } from './data/auth'
 import PortalLoading from './components/PortalLoading'
 import SharedLoginPage from './pages/SharedLoginPage'
 import SharedLoginCallback from './pages/SharedLoginCallback'
@@ -20,6 +20,13 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   }, [])
   if (status === 'loading') return <PortalLoading />
   return status === 'authenticated' ? <>{children}</> : <Navigate to="/" replace />
+}
+
+function RequireProgrammeAccess({ children }: { children: React.ReactNode }) {
+  const lapse = authenticatedUser()?.lapse_status
+  return lapse?.payment_lapse === true || lapse?.session_lapse === true
+    ? <Navigate to="/dashboard" replace />
+    : <>{children}</>
 }
 
 export default function App() {
@@ -42,7 +49,9 @@ export default function App() {
           path="/dashboard/register-courses"
           element={
             <RequireAuth>
-              <RegisterCoursesPage />
+              <RequireProgrammeAccess>
+                <RegisterCoursesPage />
+              </RequireProgrammeAccess>
             </RequireAuth>
           }
         />

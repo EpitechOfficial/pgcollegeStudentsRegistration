@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export type ToastMessage = { id: number; type: 'success' | 'error'; message: string; exiting: boolean }
+export type ToastMessage = { id: number; type: 'success' | 'warning' | 'error'; message: string; exiting: boolean }
 
 export function useFlashToast() {
   const [toast, setToast] = useState<ToastMessage | null>(null)
@@ -20,7 +20,7 @@ export function useFlashToast() {
       }, 200)
       return () => window.clearTimeout(timer)
     }
-    const timer = window.setTimeout(dismissToast, toast.type === 'error' ? 6000 : 4000)
+    const timer = window.setTimeout(dismissToast, toast.type === 'success' ? 4000 : 6000)
     return () => window.clearTimeout(timer)
   }, [toast, dismissToast])
 

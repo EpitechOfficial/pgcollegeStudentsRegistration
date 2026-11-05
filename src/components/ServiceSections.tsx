@@ -17,6 +17,7 @@ import type { ServiceSection } from '../types'
 import SchoolFeesDialog from './SchoolFeesDialog'
 import SuspensionDialog from './SuspensionDialog'
 import ReactivationDialog from './ReactivationDialog'
+import ExtensionProgrammeDialog from './ExtensionProgrammeDialog'
 import AdmissionClearanceDialog from './AdmissionClearanceDialog'
 import NotificationResultDialog from './NotificationResultDialog'
 import FeeScheduleDialog from './FeeScheduleDialog'
@@ -28,6 +29,10 @@ import WalletDepositDialog from './WalletDepositDialog'
 import WalletPaymentDialog from './WalletPaymentDialog'
 import WalletHistoryDialog from './WalletHistoryDialog'
 import CourseFormsDialog from './CourseFormsDialog'
+import FlashToast from './FlashToast'
+import { useFlashToast } from './useFlashToast'
+import { loadSuspension } from '../data/suspension'
+import { isDemoSession } from '../data/auth'
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
   process: FileText,
@@ -40,6 +45,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
 
 interface ServiceSectionsProps {
   sections: ServiceSection[]
+  sessionLapsed: boolean
   enhancedStyle: boolean
   onStyleChange: (enhanced: boolean) => void
   /** Whether the student's info is currently locked via the Lock Up service */
@@ -95,12 +101,49 @@ function buildColumns(sections: ServiceSection[], columnCount: number): ServiceS
 
 export default function ServiceSections({
   sections,
+  sessionLapsed,
   enhancedStyle,
   onStyleChange,
   infoLocked,
   onToggleInfoLock,
   onOpenRegisterCourses,
 }: ServiceSectionsProps) {
+  const { toast, showToast, dismissToast } = useFlashToast()
+  const suspensionServiceAvailable = !sessionLapsed && sections.some((section) => section.id === 'process')
+  const [reactivationAccess, setReactivationAccess] = useState<'checking' | 'none' | 'pending' | 'approved' | 'unavailable'>(
+    isDemoSession() ? 'approved' : 'checking',
+  )
+
+  useEffect(() => {
+    if (isDemoSession() || !suspensionServiceAvailable) return
+    const controller = new AbortController()
+    void loadSuspension(controller.signal).then((record) => {
+      if (controller.signal.aborted) return
+      if (!record.exists) setReactivationAccess('none')
+      else if (record.status === 'approved' || !!record.approvedDate) setReactivationAccess('approved')
+      else setReactivationAccess('pending')
+    }).catch(() => {
+      if (!controller.signal.aborted) setReactivationAccess('unavailable')
+    })
+    return () => controller.abort()
+  }, [suspensionServiceAvailable])
+
+  function openReactivation() {
+    if (reactivationAccess === 'approved') {
+      setReactivationKind('suspended')
+      return
+    }
+    if (reactivationAccess === 'checking') {
+      showToast('warning', 'Checking your suspension status. Please try again shortly.')
+      return
+    }
+    if (reactivationAccess === 'unavailable') {
+      showToast('warning', 'Unable to verify your suspension status. Please try again.')
+      return
+    }
+    showToast('warning', 'Your suspension request has not been approved. Reactivation will be available after approval.')
+  }
+
   function toggleStyle() {
     onStyleChange(!enhancedStyle)
   }
@@ -115,7 +158,7 @@ export default function ServiceSections({
 
   const [schoolFeesOpen, setSchoolFeesOpen] = useState(false)
   const [suspensionOpen, setSuspensionOpen] = useState(false)
-  const [reactivationOpen, setReactivationOpen] = useState(false)
+  const [reactivationKind, setReactivationKind] = useState<'suspended' | 'lapsed' | null>(null)
   const [clearanceOpen, setClearanceOpen] = useState(false)
   const [resultOpen, setResultOpen] = useState(false)
   const [feeScheduleOpen, setFeeScheduleOpen] = useState(false)
@@ -148,6 +191,7 @@ export default function ServiceSections({
 
   return (
     <section aria-label="Portal services" className="space-y-4">
+      <FlashToast toast={toast} onDismiss={dismissToast} />
       {/* Section Title */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -172,6 +216,12 @@ export default function ServiceSections({
         {columns.map((column, columnIndex) => (
           <div key={columnIndex} className="flex min-w-0 flex-1 flex-col gap-4">
             {column.map((section) => {
+              const services = section.services.filter((service) => {
+                if (sessionLapsed && section.id === 'process') return service.id === 'reactivation-lapsed'
+                if (service.id === 'reactivation-suspension') return reactivationAccess !== 'none'
+                if (service.id === 'reactivation-lapsed') return isDemoSession() || sessionLapsed
+                return true
+              })
               const SectionIcon = SECTION_ICONS[section.id] ?? FileText
               const isExpanded = expandedSections[section.id] ?? true
               const isProcess = enhancedStyle && section.id === 'process'
@@ -215,7 +265,7 @@ export default function ServiceSections({
 
                     <div className="flex items-center gap-2">
                       <span className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${isProcess ? 'bg-white/10 text-[#FFBB00] ring-1 ring-white/10' : isPayments ? 'bg-white/10 text-emerald-100 ring-1 ring-white/10' : isCourseForm ? 'bg-white/10 text-indigo-100 ring-1 ring-white/10' : isMedicals ? 'bg-white/10 text-cyan-100 ring-1 ring-white/10' : isExamination ? 'bg-white/10 text-amber-100 ring-1 ring-white/10' : isWallet ? 'bg-white/10 text-rose-100 ring-1 ring-white/10' : 'bg-slate-100 text-[#495057]'}`}>
-                        {section.services.length}
+                        {services.length}
                       </span>
                       <ChevronDown
                         className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isThemed ? 'text-white/80' : 'text-[#495057]'} ${isExpanded ? 'rotate-180' : ''}`}
@@ -231,7 +281,7 @@ export default function ServiceSections({
                       className={`border-t p-2 ${isProcess ? 'border-[#FFBB00]/30 bg-gradient-to-b from-[#F3F7FB] to-white' : isPayments ? 'border-emerald-200/60 bg-gradient-to-b from-emerald-50/70 to-white' : isCourseForm ? 'border-indigo-200/60 bg-gradient-to-b from-indigo-50/70 to-white' : isMedicals ? 'border-cyan-200/60 bg-gradient-to-b from-cyan-50/70 to-white' : isExamination ? 'border-amber-200/60 bg-gradient-to-b from-amber-50/70 to-white' : isWallet ? 'border-rose-200/60 bg-gradient-to-b from-rose-50/70 to-white' : 'border-[#E5E7EB]/70 bg-white'}`}
                     >
                       <ul className="space-y-1">
-                        {section.services.map((service) => {
+                        {services.map((service) => {
                           const ServiceIcon = service.icon
                           const isLocked = service.locked
                           const isLockAction = service.action === 'lock-info'
@@ -251,7 +301,7 @@ export default function ServiceSections({
                             <li key={service.id}>
                               <button
                                 type="button"
-                                onClick={isLockAction ? onToggleInfoLock : isRegisterAction ? onOpenRegisterCourses : service.id === 'generate-invoice' ? () => setSchoolFeesOpen(true) : service.id === 'suspend-programme' ? () => setSuspensionOpen(true) : service.id === 'reactivation-form' ? () => setReactivationOpen(true) : service.id === 'clearance-form' ? () => setClearanceOpen(true) : service.id === 'result-notification' ? () => setResultOpen(true) : service.id === 'schedule-of-fees' ? () => setFeeScheduleOpen(true) : service.id === 'print-course-form' ? () => setCourseFormsOpen(true) : service.id === 'print-receipt' ? () => setReceiptsOpen(true) : service.id === 'history' ? () => setWalletHistoryOpen(true) : service.id === 'make-payment' ? () => setWalletPaymentOpen(true) : service.id === 'deposit' ? () => setDepositOpen(true) : service.id === 'upload-passport' ? () => setPassportOpen(true) : service.id === 'edit-medical' ? () => setMedicalOpen(true) : service.id === 'payment-record' ? () => setPaymentRecordOpen(true) : service.id === 'financial-clearance' ? () => setFinancialClearanceOpen(true) : undefined}
+                                onClick={isLockAction ? onToggleInfoLock : isRegisterAction ? onOpenRegisterCourses : service.id === 'generate-invoice' ? () => setSchoolFeesOpen(true) : service.id === 'suspend-programme' ? () => setSuspensionOpen(true) : service.id === 'reactivation-suspension' ? openReactivation : service.id === 'reactivation-lapsed' ? () => setReactivationKind('lapsed') : service.id === 'clearance-form' ? () => setClearanceOpen(true) : service.id === 'result-notification' ? () => setResultOpen(true) : service.id === 'schedule-of-fees' ? () => setFeeScheduleOpen(true) : service.id === 'print-course-form' ? () => setCourseFormsOpen(true) : service.id === 'print-receipt' ? () => setReceiptsOpen(true) : service.id === 'history' ? () => setWalletHistoryOpen(true) : service.id === 'make-payment' ? () => setWalletPaymentOpen(true) : service.id === 'deposit' ? () => setDepositOpen(true) : service.id === 'upload-passport' ? () => setPassportOpen(true) : service.id === 'edit-medical' ? () => setMedicalOpen(true) : service.id === 'payment-record' ? () => setPaymentRecordOpen(true) : service.id === 'financial-clearance' ? () => setFinancialClearanceOpen(true) : undefined}
                                 disabled={isLocked}
                                 aria-disabled={isLocked}
                                 aria-pressed={isLockAction ? infoLocked : undefined}
@@ -321,8 +371,9 @@ export default function ServiceSections({
       </div>
 
       {schoolFeesOpen && <SchoolFeesDialog onClose={() => setSchoolFeesOpen(false)} />}
-      {suspensionOpen && <SuspensionDialog onClose={() => setSuspensionOpen(false)} />}
-      {reactivationOpen && <ReactivationDialog onClose={() => setReactivationOpen(false)} />}
+      {suspensionOpen && <SuspensionDialog onClose={() => setSuspensionOpen(false)} onSubmitted={(message) => { setReactivationAccess('pending'); showToast('success', message) }} />}
+      {reactivationKind === 'suspended' && <ReactivationDialog kind="suspended" onClose={() => setReactivationKind(null)} />}
+      {reactivationKind === 'lapsed' && <ExtensionProgrammeDialog onClose={() => setReactivationKind(null)} />}
       {clearanceOpen && <AdmissionClearanceDialog onClose={() => setClearanceOpen(false)} />}
       {resultOpen && <NotificationResultDialog onClose={() => setResultOpen(false)} />}
       {feeScheduleOpen && <FeeScheduleDialog onClose={() => setFeeScheduleOpen(false)} />}

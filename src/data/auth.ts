@@ -8,6 +8,7 @@ export type AuthError = {
 export interface AuthUser {
   numeration: string;
   name: string;
+  nameForForms?: string;
   surname?: string;
   other_names?: string;
   email?: string | null;
@@ -25,6 +26,10 @@ export interface AuthUser {
   } | null;
   financial_summary?: Record<string, unknown> | null;
   admission_status?: Record<string, unknown> | null;
+  lapse_status?: {
+    payment_lapse?: boolean;
+    session_lapse?: boolean;
+  } | null;
   [key: string]: unknown;
 }
 interface Session {

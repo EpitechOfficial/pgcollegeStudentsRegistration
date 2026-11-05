@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, Download, LoaderCircle, Printer, X } from 'lucide-react'
+import { ArrowRight, LoaderCircle, Printer, X } from 'lucide-react'
 import { currentSession, currentStudent, SCHOOL_FEE_ITEMS } from '../data/portal'
 import { buildFeeDocument, type FeeDocument } from '../data/feeDocument'
 import { buildStaffFeeForm, verifyDemoStaffFees, verifyStaffFees, type StaffFeeReview } from '../data/staffFees'
@@ -115,16 +115,12 @@ export default function SchoolFeesDialog({ onClose }: { onClose: () => void }) {
     showToast('success', 'Your invoice is ready.')
   }
 
-  function downloadInvoice() {
-    if (!invoice) return
-    const content = buildFeeDocument({ ...invoice, kind: 'invoice' })
-    const url = URL.createObjectURL(new Blob([content], { type: 'text/html;charset=utf-8' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${invoice.reference}.html`
-    link.click()
-    showToast('success', 'Invoice download started.')
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  function proceedToPayment() {
+    if (!invoice?.paymentUrl) {
+      showToast('error', 'A payment link was not returned for this invoice.')
+      return
+    }
+    window.location.assign(invoice.paymentUrl)
   }
 
   return createPortal(
@@ -204,14 +200,14 @@ export default function SchoolFeesDialog({ onClose }: { onClose: () => void }) {
             <div className="school-fees-invoice-footer flex flex-col gap-3 border-t border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               {/* <p className="max-w-xs text-xs text-slate-500">Demo invoice. Online payment is not connected yet.</p> */}
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                <button type="button" disabled={!!loading} aria-busy={loading === 'download'} onClick={() => void runAction('download', downloadInvoice, 'Unable to prepare the download. Please try again.')} aria-label={loading === 'download' ? 'Preparing invoice download' : 'Download invoice as HTML'} title="Download invoice as HTML" className={secondaryButtonClass}>{loading === 'download' ? spinner : <Download className="h-4 w-4" />}</button>
+                {/* <button type="button" disabled={!!loading} aria-busy={loading === 'download'} onClick={() => void runAction('download', downloadInvoice, 'Unable to prepare the download. Please try again.')} aria-label={loading === 'download' ? 'Preparing invoice download' : 'Download invoice as HTML'} title="Download invoice as HTML" className={secondaryButtonClass}>{loading === 'download' ? spinner : <Download className="h-4 w-4" />}</button> */}
                 <button type="button" disabled={!!loading || !previewReady} aria-busy={loading === 'print'} onClick={() => void runAction('print', () => {
                   const preview = previewRef.current?.contentWindow
                   if (!preview) throw new Error('Invoice preview unavailable')
                   preview.focus()
                   preview.print()
                 }, 'Unable to open printing. Please try again.')} className={secondaryButtonClass}>{loading === 'print' ? spinner : <Printer className="h-4 w-4" />}{loading === 'print' ? 'Preparing Print…' : !previewReady ? 'Loading Invoice…' : 'Print Invoice'}</button>
-                <button type="button" disabled className={buttonClass}>Proceed to Payment<ArrowRight className="h-4 w-4 text-gold" /></button>
+                <button type="button" disabled={!invoice.paymentUrl || !!loading} onClick={proceedToPayment} title={invoice.paymentUrl ? 'Continue to the payment provider' : 'Payment link is unavailable'} className={buttonClass}>Proceed to Payment<ArrowRight className="h-4 w-4 text-gold" /></button>
               </div>
             </div>
           </div>

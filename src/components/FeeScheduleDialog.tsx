@@ -95,7 +95,7 @@ export default function FeeScheduleDialog({ onClose }: { onClose: () => void }) 
         <p className="mt-4 text-xs leading-relaxed text-slate-500">This schedule lists the full session charges. Check your payment record for payments already made. {schedule.demo ? 'Currently shown from demo portal data.' : ''}</p>
       </div>}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white p-4 sm:px-5">
-        <div><p className="text-2xs text-slate-500">Total session fees</p><p className="text-lg font-bold tabular-nums text-navy">{schedule ? formatNaira(total) : '?'}</p></div>
+        <div><p className="text-2xs text-slate-500">Total session fees</p><p className="text-lg font-bold tabular-nums text-navy">{schedule ? formatNaira(total) : ''}</p></div>
         <div className="flex items-center gap-3">
           <button type="button" onClick={preparePrint} disabled={printing || fetching || !!error || !schedule} aria-busy={printing} className="inline-flex items-center gap-2 rounded-xl border border-navy/20 bg-navy/5 px-4 py-2.5 text-sm font-semibold text-navy transition-colors hover:bg-navy/10 disabled:cursor-not-allowed disabled:opacity-50">{printing ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Printer aria-hidden="true" className="h-4 w-4" />}{printing ? 'Preparing…' : 'Print / Save PDF'}</button>
           <button type="button" onClick={onClose} className="rounded-xl bg-navy px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-navy-700 active:scale-95">Close</button>

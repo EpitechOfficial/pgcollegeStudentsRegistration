@@ -36,14 +36,13 @@ export function reactivationPayload(values: ReactivationValues) {
 }
 export const suspendedReactivationPayload = reactivationPayload
 
-async function requestReactivation(signal: AbortSignal, body?: ReturnType<typeof reactivationPayload>): Promise<Record<string, unknown>> {
+async function requestReactivation(signal: AbortSignal): Promise<Record<string, unknown>> {
   const token = restoreSession()
   if (!token) throw new Error('Please sign in again.')
   const response = await fetch(apiUrl('reactivation'), {
-    method: body ? 'POST' : 'GET',
+    method: 'GET',
     signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
-    headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-    ...(body ? { body: JSON.stringify(body) } : {}),
+    headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
   })
   let payload: Record<string, unknown>
   try {
@@ -99,15 +98,8 @@ export async function loadReactivation(signal: AbortSignal) {
 }
 
 export async function generateReactivation(values: ReactivationValues, signal: AbortSignal) {
-  const payload = await requestReactivation(signal, reactivationPayload(values))
-  const data = object(payload.form_data)
-  const requiredFields = Object.keys(fields).filter(field => field !== 'numeration')
-  const expectedType = values.kind === 'lapsed' ? 'Lapsed Registration' : 'Suspended Registration'
-  if (data.reactivation_type !== expectedType || requiredFields.some(field => !(field in data))) {
-    throw new Error('The server returned incomplete form_data. Please try again.')
-  }
-  const mapped = reactivationValues(data)
-  if (values.kind === 'lapsed') mapped.missedSessions = String(data.susp_period ?? '').match(/\d+/)?.[0] ?? values.missedSessions ?? ''
-  return { applicationNumber: values.applicationNumber ?? '', ...mapped, kind: values.kind }
+  signal.throwIfAborted()
+  reactivationPayload(values)
+  return { ...values }
 }
 export const generateSuspendedReactivation = generateReactivation

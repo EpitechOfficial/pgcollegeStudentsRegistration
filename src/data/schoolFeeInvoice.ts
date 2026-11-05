@@ -22,16 +22,25 @@ export async function generateSchoolFeeInvoice(signal: AbortSignal, staffId?: st
   if (!response.ok || payload?.success !== true) throw new Error(string(payload?.message) ?? 'Unable to generate your invoice. Please try again.')
   const data = object(payload.data)
   const student = object(data?.student)
+  const paymentLinks = object(data?.payment_links)
   const lines = Array.isArray(data?.line_items) ? data.line_items : []
   const items = lines.map(object).filter((item): item is Record<string, unknown> => !!item).map((item) => ({ description: string(item.description) ?? '', amount: number(item.amount) ?? -1 })).filter((item) => item.description && item.amount >= 0)
-  const reference = string(data?.invoice_number)
-  const session = string(data?.invoice_session)
-  const createdAt = string(data?.date_requested)
+  const reference = string(data?.invoiceno)
+  const session = string(data?.sessioned)
+  const createdAt = string(data?.dateRequested)
   const charged = number(data?.amount_charge)
+  const rawPaymentUrl = string(paymentLinks?.school_fees)
+  let paymentUrl: string | undefined
+  if (rawPaymentUrl) {
+    try {
+      const url = new URL(rawPaymentUrl)
+      if (url.protocol === 'https:' || url.protocol === 'http:') paymentUrl = url.href
+    } catch { /* Keep the invoice printable when the payment link is invalid. */ }
+  }
   const itemTotal = items.reduce((sum, item) => sum + item.amount, 0)
   if (!reference || !session || !createdAt || !Number.isFinite(Date.parse(createdAt)) || !student || !items.length || charged === null || Math.abs(itemTotal - charged) > 0.01) throw new Error('The server returned incomplete invoice details. Please try again.')
   return {
-    reference, session, createdAt, items,
+    reference, session, createdAt, items, paymentUrl,
     receiptDetails: {
       applicationNumber: string(student.numeration),
       fullName: string(student.name),

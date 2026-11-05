@@ -27,7 +27,10 @@ export function activeLetterOfficials(records: LetterOfficial[]): LetterOfficial
 export async function loadLetterOfficials(signal: AbortSignal): Promise<LetterOfficial[]> {
   const endpoint = import.meta.env.VITE_LETTER_OFFICIALS_URL
   if (!endpoint) { signal.throwIfAborted(); return DEMO_OFFICIALS }
-  const response = await fetch(endpoint, { credentials: 'include', headers: { Accept: 'application/json' }, signal })
+  const response = await fetch(endpoint, {
+    headers: { Accept: 'application/json' },
+    signal,
+  })
   if (!response.ok) throw new Error('Unable to load letter officials')
   const payload = await response.json()
   const records: unknown = Array.isArray(payload) ? payload : payload?.data
@@ -36,7 +39,11 @@ export async function loadLetterOfficials(signal: AbortSignal): Promise<LetterOf
     return (typeof record.id === 'number' || typeof record.id === 'string') &&
       ['officer_type', 'title', 'name'].every((key) => typeof record[key] === 'string') &&
       ['credentials', 'mobile', 'email', 'secondary_email'].every((key) => record[key] === null || typeof record[key] === 'string') &&
-      [true, false, 0, 1, '0', '1'].includes(record.is_active)
+      (record.is_active === undefined || [true, false, 0, 1, '0', '1'].includes(record.is_active))
   })) throw new Error('Invalid letter officials response')
-  return activeLetterOfficials(records as LetterOfficial[])
+
+  const officials = (records as Array<Omit<LetterOfficial, 'is_active'> & { is_active?: LetterOfficial['is_active'] }>)
+    .map((record) => ({ ...record, is_active: record.is_active ?? 1 }))
+
+  return activeLetterOfficials(officials)
 }

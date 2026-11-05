@@ -16,12 +16,20 @@ import { authenticatedUser } from '../data/auth'
 import { isDemoSession } from '../data/auth'
 import { isPhdDegree } from '../data/degree'
 import { confirmCourseRegistration, infoIsLocked, loadCourseLock } from '../data/courseRegistration'
+import { TriangleAlert } from 'lucide-react'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const programme = authenticatedUser()?.programme
+  const user = authenticatedUser()
+  const programme = user?.programme
+  const paymentLapsed = user?.lapse_status?.payment_lapse === true
+  const sessionLapsed = user?.lapse_status?.session_lapse === true
   const showExamination = isPhdDegree(programme?.degree)
-  const sections = SERVICE_SECTIONS.filter((section) => section.id !== 'examination' || showExamination)
+  const sections = SERVICE_SECTIONS.filter((section) => {
+    if (paymentLapsed) return section.id === 'payments'
+    if (sessionLapsed) return section.id === 'payments' || section.id === 'process'
+    return section.id !== 'examination' || showExamination
+  })
   const [financials, setFinancials] = useState<FinancialSummary | null>(isDemoSession() ? FINANCIALS : null)
   const [financialsLoading, setFinancialsLoading] = useState(true)
   const [enhancedStyle, setEnhancedStyle] = useState(() => {
@@ -100,12 +108,13 @@ export default function DashboardPage() {
     }
   }, [infoLocked, navigate])
   useEffect(() => {
+    if (paymentLapsed) return
     const controller = new AbortController()
     void loadCourseLock(controller.signal).then((locked) => {
       if (!controller.signal.aborted && !lockCompleted.current) setInfoLocked(locked)
     }).catch(() => { /* Registration page provides status errors and retry. */ })
     return () => controller.abort()
-  }, [])
+  }, [paymentLapsed])
 
   const { logout: handleLogout, loggingOut } = useLogout()
 
@@ -125,6 +134,26 @@ export default function DashboardPage() {
           {/* 1. Clean, minimalist student banner */}
           <WelcomeBanner />
 
+          {paymentLapsed && (
+            <div role="alert" className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-sm">
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-bold">Programme access restricted</p>
+                <p className="mt-1 text-xs leading-relaxed">Your programme has lapsed because school fees were not paid for two consecutive sessions. Only payment services are available.</p>
+              </div>
+            </div>
+          )}
+
+          {!paymentLapsed && sessionLapsed && (
+            <div role="status" className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-blue-950 shadow-sm">
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-bold">Programme duration exceeded</p>
+                <p className="mt-1 text-xs leading-relaxed">You have exceeded the standard duration for your programme. Use Reactivate Lapsed Registration in the Process section to continue.</p>
+              </div>
+            </div>
+          )}
+
           {/* 2. Simplified, elegant financial summary */}
           <FinancialSummaryCards
             data={financials}
@@ -135,6 +164,7 @@ export default function DashboardPage() {
           {/* 3. Modern Service Sections with Cards & Auto Dropdowns */}
           <ServiceSections
             sections={sections}
+            sessionLapsed={sessionLapsed}
             infoLocked={infoLocked}
             enhancedStyle={enhancedStyle}
             onStyleChange={handleStyleChange}

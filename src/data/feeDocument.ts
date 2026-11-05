@@ -31,8 +31,10 @@ export interface FeeDocument {
   items: { description: string; amount: number }[]
   paymentReference?: string
   invoiceNumber?: string
+  paymentUrl?: string
   demo?: boolean
   receiptDetails?: ReceiptDetails
+  feeType?: 'school-fees' | 'application-fee' | 'acceptance-fee' | 'other'
 }
 
 // Separate document identities; a receipt must only be issued after confirmed payment.
@@ -53,8 +55,18 @@ export function buildFeeDocument(document: FeeDocument): string {
   const total = document.items.reduce((total, item) => total + item.amount, 0)
   const amount = money(total)
   const profile = document.receiptDetails ?? {}
+  const compactReceipt = document.kind === 'receipt' && (document.feeType === 'application-fee' || document.feeType === 'acceptance-fee')
+  const studentName = profile.fullName || [profile.surname, profile.otherNames].filter(Boolean).join(' ') || student.name
+  const invoicePurpose = document.feeType === 'application-fee'
+    ? 'Application Fee'
+    : document.feeType === 'acceptance-fee'
+      ? 'Acceptance Fee'
+      : 'School Fees'
+  const receiptIdentity = profile.surname || profile.otherNames
+    ? [['Surname', profile.surname], ['Other Names', profile.otherNames]]
+    : [['Student Name', profile.fullName]]
   const studentDetails = document.kind === 'receipt' ? [
-    ['Surname', profile.surname], ['Other Names', profile.otherNames],
+    ...receiptIdentity,
     ['Gender', profile.gender], ['Marital Status', profile.maritalStatus],
     ['Telephone', profile.telephone], ['E-mail address', profile.email],
     ['Faculty', profile.faculty], ['Department', profile.department],
@@ -76,6 +88,11 @@ export function buildFeeDocument(document: FeeDocument): string {
     ['Matric No', profile.matric], ['Invoice No', document.invoiceNumber],
     ['Degree in View', profile.degree], ['Payment Reference', document.paymentReference],
   ])}</div></section>`
+  const compactReceiptPanel = `<section class="summary compact-receipt-summary">
+    <div><p>Student Name:</p><b>${escapeHtml(studentName)}</b></div>
+    <div><p>Application Number:</p><b>${escapeHtml(profile.applicationNumber || student.applicationNumber || 'Not provided')}</b></div>
+    <div><p>Invoice For:</p><b>${escapeHtml(invoicePurpose)}</b></div>
+  </section>`
   const rows = document.items.map((item, index) => `<tr>${document.kind === 'invoice' ? `<td>${index + 1}</td>` : ''}<td>${escapeHtml(item.description)}</td><td class="price">${money(item.amount)}</td></tr>`).join('')
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -94,6 +111,7 @@ body{margin:0;background:#f4f6fb;color:#172033;font-family:Arial,sans-serif;font
 .metadata div{display:flex;flex-wrap:wrap;gap:10px 20px;max-width:100%;background:${color};color:white;padding:12px 16px;border-radius:0 0 0 8px;overflow-wrap:anywhere}
 .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;border:1px solid #e5e7eb;border-radius:6px;padding:16px;margin-bottom:8px}
 .summary p{margin:0 0 6px;color:#64748b}.summary b{line-height:1.5;overflow-wrap:anywhere}
+.compact-receipt-summary{border-color:${color};padding:14px 16px}
 table{width:100%;border-collapse:collapse}th,td{padding:12px;border-bottom:1px solid #e7e7e7;text-align:left}
 thead{display:table-header-group}tr{break-inside:avoid}.total,.note{break-inside:avoid}
 thead,.total{background:${color};color:white}.price{text-align:right;white-space:nowrap}
@@ -113,7 +131,7 @@ thead,.total{background:${color};color:white}.price{text-align:right;white-space
 ${document.demo ? '' : ''}
 <header class="header"><div class="brand"><img src="${logo}" alt="Postgraduate College logo"><p>${escapeHtml(COLLEGE.shortName)},<br>${escapeHtml(COLLEGE.university)},<br>Ibadan, Nigeria.</p></div><div class="title">Students' ${title}</div></header>
 <div class="metadata"><div><span>${title} No: <b>${escapeHtml(document.reference)}</b></span><span>Date: <b>${escapeHtml(new Date(document.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }))}</b></span></div></div>
-${document.kind === 'receipt' ? receiptPanel : `<section class="summary">${details}</section>`}
+${document.kind === 'receipt' ? compactReceipt ? compactReceiptPanel : receiptPanel : `<section class="summary">${details}</section>`}
 <table><thead><tr>${document.kind === 'invoice' ? '<th>Item</th>' : ''}<th>${document.kind === 'receipt' ? 'Cost Item' : 'Description'}</th><th class="price">${document.kind === 'receipt' ? 'Amount (₦)' : 'Price'}</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="total"><span>${document.kind === 'receipt' ? 'Amount Paid' : 'Grand Total'}</span><span>${amount}</span></div>
 ${document.kind === 'receipt' ? `<section class="summary" style="margin-top:20px;grid-template-columns:minmax(0,4fr) minmax(0,1fr)"><div><p>Amount in Words:</p><b>${escapeHtml(amountInWords(total))}</b></div><div><p>Bank Name:</p><b>${escapeHtml(profile.bankName || 'Not provided')}</b></div></section><div class="cashier">${profile.cashier ? `<b>${escapeHtml(profile.cashier)}</b><br>` : ''}Cashier</div>` : ''}

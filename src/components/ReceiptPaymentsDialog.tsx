@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowLeft, Download, LoaderCircle, Printer, X } from 'lucide-react'
-import { loadPayments, receiptablePayments, type PaymentRecord } from '../data/payments'
+import { loadPayments, loadSchoolFeeReceipt, receiptablePayments, type PaymentRecord } from '../data/payments'
 import { buildFeeDocument } from '../data/feeDocument'
 import { formatNaira } from '../data/portal'
 import FlashToast from './FlashToast'
@@ -27,17 +27,19 @@ export default function ReceiptPaymentsDialog({ onClose, history = false }: { on
   const [selected, setSelected] = useState<PaymentRecord | null>(null)
   const [ready, setReady] = useState(false)
   const [action, setAction] = useState<'download' | 'print' | null>(null)
+  const [loadingReceipt, setLoadingReceipt] = useState<string | null>(null)
+  const receiptController = useRef<AbortController | null>(null)
   const { toast, showToast, dismissToast } = useFlashToast()
   const records = useMemo(() => history ? [...payments].sort((left, right) => (right.paidAt ? Date.parse(right.paidAt) : 0) - (left.paidAt ? Date.parse(left.paidAt) : 0)) : receiptablePayments(payments), [payments, history])
   const visible = records.filter((record) => (session === 'all' || record.session === session) && (feeType === 'all' || record.feeType === feeType) && (status === 'all' || record.status === status))
-  const html = useMemo(() => selected?.receiptNumber && selected.paidAt ? buildFeeDocument({ kind: 'receipt', reference: selected.receiptNumber, createdAt: selected.paidAt, session: selected.session, items: selected.items, paymentReference: selected.reference, invoiceNumber: selected.invoiceNumber, receiptDetails: { ...selected.receiptDetails, applicationNumber: selected.applicationNumber || selected.receiptDetails?.applicationNumber, cashier: selected.cashier || selected.receiptDetails?.cashier }, demo: source === 'demo' }) : '', [selected, source])
+  const html = useMemo(() => selected?.receiptNumber && selected.paidAt ? buildFeeDocument({ kind: 'receipt', reference: selected.receiptNumber, createdAt: selected.paidAt, session: selected.session, items: selected.items, paymentReference: selected.reference, invoiceNumber: selected.invoiceNumber, feeType: selected.feeType, receiptDetails: { ...selected.receiptDetails, applicationNumber: selected.applicationNumber || selected.receiptDetails?.applicationNumber, cashier: selected.cashier || selected.receiptDetails?.cashier }, demo: source === 'demo' }) : '', [selected, source])
 
   useEffect(() => {
     mounted.current = true
     const dialog = dialogRef.current!
     const overflow = document.body.style.overflow
     dialog.showModal(); document.body.style.overflow = 'hidden'
-    return () => { mounted.current = false; dialog.close(); document.body.style.overflow = overflow }
+    return () => { mounted.current = false; receiptController.current?.abort(); dialog.close(); document.body.style.overflow = overflow }
   }, [])
 
   useEffect(() => {
@@ -71,6 +73,25 @@ export default function ReceiptPaymentsDialog({ onClose, history = false }: { on
     finally { busy.current = false; if (mounted.current) setAction(null) }
   }
 
+  async function openReceipt(record: PaymentRecord) {
+    if (loadingReceipt) return
+    if (record.feeType !== 'school-fees' || source === 'demo') {
+      setReady(false); setSelected(record); return
+    }
+    const controller = new AbortController()
+    receiptController.current = controller
+    setLoadingReceipt(record.id)
+    try {
+      const receipt = await loadSchoolFeeReceipt(record.invoiceNumber, controller.signal)
+      if (!controller.signal.aborted && mounted.current) { setReady(false); setSelected(receipt) }
+    } catch (failure) {
+      if (!controller.signal.aborted && mounted.current) showToast('error', failure instanceof Error ? failure.message : 'Unable to load this school fee receipt.')
+    } finally {
+      if (mounted.current) setLoadingReceipt(null)
+      if (receiptController.current === controller) receiptController.current = null
+    }
+  }
+
   return createPortal(<dialog ref={dialogRef} onCancel={onClose} aria-labelledby="receipt-title" className="suspension-dialog fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-6xl overflow-hidden rounded-2xl bg-white p-0 text-ink shadow-2xl backdrop:bg-[#071D36]/60">
     <FlashToast toast={toast} onDismiss={dismissToast} />
     <div className="flex shrink-0 items-center justify-between gap-3 border-b p-5"><div><h2 id="receipt-title" className="text-lg font-bold">{selected ? selected.feeType === 'application-fee' ? 'Application Fee Receipt' : selected.feeType === 'acceptance-fee' ? 'Acceptance Fee Receipt' : selected.feeType === 'school-fees' ? 'School Fee Receipt' : 'Payment Receipt' : history ? 'Payment Record' : 'Print Receipt'}</h2><p className="mt-1 text-xs text-slate-500">{selected ? `${selected.receiptNumber} · ${selected.session}` : history ? 'All school fee, application fee and acceptance fee transactions.' : 'Select a successful school fee payment to preview and print its receipt.'}</p></div><button type="button" onClick={onClose} aria-label="Close receipts" className="rounded-lg p-2 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
@@ -85,10 +106,10 @@ export default function ReceiptPaymentsDialog({ onClose, history = false }: { on
           <td className="px-4 py-4">{record.session}</td>
           <td className="px-4 py-4">{record.invoiceNumber}</td>
           <td className="whitespace-nowrap px-4 py-4">{date(record.paidAt)}</td>
-          <>{history && <><td className="whitespace-nowrap px-4 py-4">{record.feeType.replaceAll('-', ' ')}</td><td className="px-4 py-4"><span className={`rounded-full px-2 py-1 font-semibold ${record.status === 'successful' ? 'bg-emerald-50 text-emerald-700' : record.status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'}`}>{record.status}</span></td></>}<td className="px-4 py-4">{record.status === 'successful' && record.receiptNumber && record.paidAt ? <button type="button" className={`${secondary} whitespace-nowrap`} onClick={() => { setReady(false); setSelected(record) }}><Printer className="h-4 w-4" />Print Receipt</button> : <span className="text-slate-500">{record.status === 'successful' ? 'Receipt awaiting issuance' : '—'}</span>}</td></>
+          <>{history && <><td className="whitespace-nowrap px-4 py-4">{record.feeType.replaceAll('-', ' ')}</td><td className="px-4 py-4"><span className={`rounded-full px-2 py-1 font-semibold ${record.status === 'successful' ? 'bg-emerald-50 text-emerald-700' : record.status === 'failed' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'}`}>{record.status}</span></td></>}<td className="px-4 py-4">{record.status === 'successful' && record.receiptNumber && record.paidAt ? <button type="button" disabled={!!loadingReceipt} className={`${secondary} whitespace-nowrap`} onClick={() => void openReceipt(record)}>{loadingReceipt === record.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}{loadingReceipt === record.id ? 'Loading…' : 'Print Receipt'}</button> : <span className="text-slate-500">{record.status === 'successful' ? 'Receipt awaiting issuance' : '—'}</span>}</td></>
         </tr>)}</tbody></table></div> : <p className="rounded-xl border border-dashed p-10 text-center text-sm text-slate-500">{history ? 'No payments match these filters.' : 'No successful school fee payments found for this session.'}</p>}
       </>}
     </div>}
-    <div className="flex shrink-0 flex-wrap justify-end gap-3 border-t p-4">{selected ? <><button type="button" disabled={!!action} className={`${secondary} mr-auto`} onClick={() => { setSelected(null); setReady(false) }}><ArrowLeft className="h-4 w-4" />Back to Payments</button><button type="button" disabled={!!action} aria-busy={action === 'download'} className={secondary} onClick={() => void run('download')}>{action === 'download' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}{action === 'download' ? 'Preparing…' : 'Download Receipt'}</button><button type="button" disabled={!!action || !ready} aria-busy={action === 'print'} className={primary} onClick={() => void run('print')}>{action === 'print' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}{action === 'print' ? 'Preparing…' : 'Print / Save PDF'}</button></> : <button type="button" onClick={onClose} className={primary}>Close</button>}</div>
+    <div className="flex shrink-0 flex-wrap justify-end gap-3 border-t p-4">{selected ? <><button type="button" disabled={!!action} className={`${secondary} mr-auto`} onClick={() => { setSelected(null); setReady(false) }}><ArrowLeft className="h-4 w-4" />Back to Payments</button><button type="button" disabled={!!action || !ready} aria-busy={action === 'print'} className={primary} onClick={() => void run('print')}>{action === 'print' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}{action === 'print' ? 'Preparing…' : 'Print / Save PDF'}</button></> : <button type="button" onClick={onClose} className={primary}>Close</button>}</div>
   </dialog>, document.body)
 }
