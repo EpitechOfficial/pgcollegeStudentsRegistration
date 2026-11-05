@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeft, Download, LoaderCircle, Printer, X } from 'lucide-react'
+import { ArrowLeft, LoaderCircle, Printer, X } from 'lucide-react'
 import { loadPayments, loadSchoolFeeReceipt, receiptablePayments, type PaymentRecord } from '../data/payments'
 import { buildFeeDocument } from '../data/feeDocument'
 import { formatNaira } from '../data/portal'
