@@ -13,7 +13,6 @@ import {
   Lock,
   Printer,
   Receipt,
-  ReceiptText,
   RefreshCw,
   ScanEye,
   Upload,
