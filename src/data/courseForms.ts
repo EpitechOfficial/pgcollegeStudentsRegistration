@@ -6,7 +6,7 @@ import { courseRequest, courseList, object } from './courseApi'
 
 interface ContactDetails { name?: string; address?: string; telephone?: string; email?: string }
 interface EducationDetails { school: string; from: string; to: string; qualification: string; discipline: string }
-const DEMO_STUDENT: ReceiptDetails = { surname: 'Alake', otherNames: 'Emmanuel', matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy }
+const DEMO_STUDENT: ReceiptDetails = { surname: 'Test', otherNames: 'User', matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy }
 
 export interface CourseFormRecord {
   id: string

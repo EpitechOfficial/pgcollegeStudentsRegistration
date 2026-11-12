@@ -120,7 +120,7 @@ export async function loadPayments(signal: AbortSignal, history = false): Promis
   if (isDemoSession()) {
     await new Promise((resolve) => setTimeout(resolve, 300))
     signal.throwIfAborted()
-    return { source: 'demo', records: DEMO_PAYMENTS.map((record) => ({ ...record, applicationNumber: STUDENT.applicationNumber, tellerNumber: null, cashier: null, paymentMode: 'Online', receiptDetails: { surname: 'Alake', otherNames: 'Emmanuel', applicationNumber: STUDENT.applicationNumber, matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy } })) }
+    return { source: 'demo', records: DEMO_PAYMENTS.map((record) => ({ ...record, applicationNumber: STUDENT.applicationNumber, tellerNumber: null, cashier: null, paymentMode: 'Online', receiptDetails: { surname: 'Test', otherNames: 'User', applicationNumber: STUDENT.applicationNumber, matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy } })) }
   }
   const token = restoreSession()
   if (!token) throw new Error('Please sign in again.')

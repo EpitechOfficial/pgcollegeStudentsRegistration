@@ -40,15 +40,15 @@ export const CURRENT_SESSION = '2025/2026' as const
 /* Signed-in student (portal session data)                             */
 /* ------------------------------------------------------------------ */
 export const STUDENT: Student = {
-  name: 'Alake Emmanuel',
-  nameForForms: 'Emmanuel Alake',
+  name: 'Test Student',
+  nameForForms: 'Test Student',
   matric: '03571',
   applicationNumber: 'PGS202403571',
-  degree: 'M.Sc.',
+  degree: 'Test Degree',
   modeOfStudy: 'Full-time',
-  programme: 'M.Sc. Economics',
-  department: 'Economics',
-  faculty: 'Faculty of Economics',
+  programme: 'Test Programme',
+  department: 'Test Department',
+  faculty: 'Test Faculty',
 }
 
 /** Current profile from /auth/user, with demo data reserved for demo sessions. */

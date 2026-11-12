@@ -36,7 +36,7 @@ export async function loadFinancialClearance(signal: AbortSignal): Promise<{ sou
   (total, item) => total + item.amount,
   0,
 ),
-      items: SCHOOL_FEE_ITEMS, student: { surname: 'Alake', otherNames: 'Emmanuel', applicationNumber: STUDENT.applicationNumber, matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy },
+      items: SCHOOL_FEE_ITEMS, student: { surname: 'Test', otherNames: 'User', applicationNumber: STUDENT.applicationNumber, matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy },
     }] }
   }
   const response = await paymentsRequest('financial-clearance', signal)

@@ -194,7 +194,7 @@ export async function signIn(
         JSON.stringify({
           mode: "demo",
           token: DEMO_TOKEN,
-          user: { numeration: "PG123", name: "Alake Emmanuel" },
+          user: { numeration: "PG123", name: "Test User" },
           expiresAt: Date.now() + THIRTY_DAYS,
         } satisfies Session),
       );
