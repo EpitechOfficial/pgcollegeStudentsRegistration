@@ -1,6 +1,4 @@
-const registrationUrl = import.meta.env.VITE_REGISTRATION_PORTAL_URL || (import.meta.env.DEV
-    ? 'http://localhost:5174/'
-    : 'https://app.pgcollege.ui.edu.ng/newregistrationportal/');
+const registrationUrl = 'https://pgcollege-students-registration.vercel.app/';
 
 export function openRegistrationPortal(token) {
     const destination = new URL(registrationUrl);
