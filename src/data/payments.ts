@@ -51,6 +51,10 @@ const amount = (...values: unknown[]) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
 }
+const splitStudentName = (value?: string) => {
+  const [surname = '', ...otherNames] = value?.trim().split(/\s+/).filter(Boolean) ?? []
+  return { surname, otherNames: otherNames.join(' ') }
+}
 const paymentStatus = (value: unknown): PaymentRecord['status'] => {
   const status = String(value ?? '').toLowerCase()
   return ['paid', 'successful', 'success', 'confirmed', '1'].includes(status) ? 'successful' : ['failed', 'declined', 'cancelled'].includes(status) ? 'failed' : 'pending'
@@ -82,13 +86,33 @@ function mapPayment(value: unknown, index: number, confirmed = false): PaymentRe
   const reference = identifier(record.reference, record.refno, record.payment_reference, record.teller_no, record.tellerno) ?? invoiceNumber
   const receiptNumber = identifier(record.receiptNumber, record.receipt_number, record.receiptno, record.receipt_no, record.refno) ?? (status === 'successful' ? reference : null)
   const normalizedItems = items.length ? items : total > 0 ? [{ description: feeType === 'school-fees' ? 'School Fee Payment' : feeType === 'acceptance-fee' ? 'Acceptance Fee' : feeType === 'application-fee' ? 'Application Fee' : 'Fee Payment', amount: total }] : []
+  const fullName = text(profile.name, record.name)
+  const parsedName = splitStudentName(fullName)
   return {
     id: String(record.id ?? `${invoiceNumber}-${index}`), applicationNumber, reference, invoiceNumber, receiptNumber, feeType,
     session: text(record.session, record.academic_session) ?? CURRENT_SESSION, paidAt, amountCharged: amount(record.amount_charge, record.amount_charged, record.charge_amount, record.total_amount) || total, amount: total || normalizedItems.reduce((sum, item) => sum + item.amount, 0), status, items: normalizedItems,
     tellerNumber: identifier(record.tellerNumber, record.teller_number, record.tellerno, record.teller_no) ?? null,
     cashier: text(record.cashier, record.cashier_name) ?? null,
     paymentMode: text(record.paymentMode, record.payment_mode, record.mode_of_payment, record.channel) ?? null,
-    receiptDetails: { fullName: text(profile.name, record.name), surname: text(profile.surname, record.surname), otherNames: text(profile.other_names, profile.otherNames, record.other_names), applicationNumber, matric: text(profile.matricno, profile.matric, record.matricno), faculty: text(profile.faculty, record.faculty), department: text(profile.department, record.department), degree: text(profile.degree, record.degree), modeOfStudy: text(profile.mode_of_study, record.mode_of_study), bankName: text(record.mode_of_payment, record.payment_mode, record.channel) },
+    receiptDetails: {
+      fullName,
+      surname: text(profile.surname, record.surname) ?? parsedName.surname,
+      otherNames: text(profile.other_names, profile.otherNames, record.other_names) ?? parsedName.otherNames,
+      applicationNumber,
+      matric: identifier(profile.matric_no, profile.matricno, profile.matric, record.matric_no, record.matricno),
+      gender: text(profile.gender, record.gender),
+      maritalStatus: text(profile.marital_status, profile.maritalStatus, record.marital_status),
+      telephone: identifier(profile.telephone, profile.phone, record.telephone),
+      email: text(profile.email, record.email),
+      faculty: text(profile.faculty, record.faculty),
+      department: text(profile.department, record.department),
+      degree: text(profile.degree, record.degree),
+      modeOfStudy: text(profile.mode_of_study, profile.mode, record.mode_of_study),
+      fieldOfInterest: text(profile.field_title, profile.field_of_interest, record.field_title),
+      supervisor: identifier(profile.supervisor, record.supervisor),
+      firstRegistrationSession: text(profile.first_reg_session, profile.first_registration_session, record.first_reg_session),
+      bankName: text(record.mode_of_payment, record.payment_mode, record.channel),
+    },
   }
 }
 

@@ -1,24 +1,30 @@
 import { isDemoSession } from './auth'
-import { loadClearanceSummary } from './paymentsApi'
+import { paymentAmount, paymentObject, paymentsRequest } from './paymentsApi'
 import { COLLEGE, CURRENT_SESSION, SCHOOL_FEE_ITEMS, STUDENT } from './portal'
 import type { ReceiptDetails } from './feeDocument'
 
 export interface FinancialClearance {
   summary?: { total: number; paid: number; balance: number; status: string }
   id: string
+  invoiceNumber?: string
   session: string
   amountPaid: number
+  totalFees?: number
+  outstandingBalance?: number
   items: { description: string; amount: number }[]
   student: ReceiptDetails
   passportUrl?: string | null
   clearedAt?: string | null
   signatureUrl?: string | null
+  status?: string
+  acceptanceFee?: { total: number; paid: number; balance: number }
+  signatory?: { title: string; name: string; credentials?: string }
 }
 
 export function clearanceTotals(record: FinancialClearance) {
   if (record.summary) return record.summary
-  const total = record.items.reduce((sum, item) => sum + item.amount, 0)
-  return { total, paid: record.amountPaid, balance: Math.max(0, Math.round((total - record.amountPaid) * 100) / 100) }
+  const total = record.totalFees ?? record.items.reduce((sum, item) => sum + item.amount, 0)
+  return { total, paid: record.amountPaid, balance: record.outstandingBalance ?? Math.max(0, Math.round((total - record.amountPaid) * 100) / 100) }
 }
 
 export async function loadFinancialClearance(signal: AbortSignal): Promise<{ source: 'demo' | 'backend'; records: FinancialClearance[] }> {
@@ -33,8 +39,83 @@ export async function loadFinancialClearance(signal: AbortSignal): Promise<{ sou
       items: SCHOOL_FEE_ITEMS, student: { surname: 'Alake', otherNames: 'Emmanuel', applicationNumber: STUDENT.applicationNumber, matric: STUDENT.matric, faculty: STUDENT.faculty, department: STUDENT.department, degree: STUDENT.degree, modeOfStudy: STUDENT.modeOfStudy },
     }] }
   }
-  const summary = await loadClearanceSummary(signal)
-  return { source: 'backend', records: [{ id: summary.session, session: summary.session, amountPaid: summary.paid, items: [], student: { applicationNumber: summary.applicationNumber }, summary }] }
+  const response = await paymentsRequest('financial-clearance', signal)
+  const container = Array.isArray(response) ? null : paymentObject(response)
+  const rows = Array.isArray(response) ? response : Array.isArray(container?.records) ? container.records : Array.isArray(container?.data) ? container.data : [container]
+  const records = rows.map((value) => {
+    const summary = paymentObject(value)
+    if (typeof summary.session !== 'string') throw new Error('Invalid financial clearance summary.')
+    const total = paymentAmount(summary.total_fees ?? summary.amount_charge)
+    const paid = paymentAmount(summary.confirmed_payments ?? summary.amount_paid)
+    const balance = summary.outstanding_balance == null
+      ? Math.max(0, Math.round((total - paid) * 100) / 100)
+      : paymentAmount(summary.outstanding_balance)
+    const status = summary.status == null ? balance === 0 ? 'Fully Paid' : paid > 0 ? 'Part Payment' : 'Unpaid' : String(summary.status)
+    const invoiceNumber = summary.invoiceno == null ? '' : String(summary.invoiceno)
+    return {
+      id: invoiceNumber || summary.session,
+      invoiceNumber,
+      session: summary.session,
+      amountPaid: paid,
+      items: [],
+      student: { applicationNumber: summary.application_number == null ? summary.appno == null ? '' : String(summary.appno) : String(summary.application_number) },
+      summary: { total, paid, balance, status },
+      status,
+    } satisfies FinancialClearance
+  })
+  return { source: 'backend', records }
+}
+
+export async function loadFinancialClearanceDocument(signal: AbortSignal, invoiceNumber?: string): Promise<FinancialClearance> {
+  const path = invoiceNumber ? `financial-clearance/print/${encodeURIComponent(invoiceNumber)}` : 'financial-clearance/print'
+  const data = paymentObject(await paymentsRequest(path, signal))
+  const student = paymentObject(data.student)
+  const signatory = paymentObject(data.signatory)
+  if (typeof data.session !== 'string' || !Array.isArray(data.line_items)) throw new Error('Invalid financial clearance print details.')
+  const text = (record: Record<string, unknown>, key: string) => record[key] == null ? '' : String(record[key])
+  const items = data.line_items.map((value) => {
+    const item = paymentObject(value)
+    if (typeof item.description !== 'string') throw new Error('Invalid financial clearance fee item.')
+    return { description: item.description, amount: paymentAmount(item.amount) }
+  })
+  const total = paymentAmount(data.amount_charge)
+  const paid = paymentAmount(data.amount_paid)
+  const studentName = text(student, 'name')
+  const parsedName = splitStudentName(studentName)
+  const record: FinancialClearance = {
+    id: text(data, 'invoiceno') || invoiceNumber || data.session,
+    invoiceNumber: text(data, 'invoiceno') || invoiceNumber,
+    session: data.session,
+    amountPaid: paid,
+    totalFees: total,
+    outstandingBalance: Math.max(0, Math.round((total - paid) * 100) / 100),
+    items,
+    student: {
+      surname: parsedName.surname,
+      otherNames: parsedName.otherNames,
+      applicationNumber: text(student, 'numeration'),
+      matric: text(student, 'matric_no'),
+      gender: text(student, 'gender'),
+      maritalStatus: text(student, 'marital_status'),
+      telephone: text(student, 'telephone'),
+      email: text(student, 'email'),
+      faculty: text(student, 'faculty'),
+      department: text(student, 'department'),
+      degree: text(student, 'degree'),
+      modeOfStudy: text(student, 'mode_of_study'),
+      fieldOfInterest: text(student, 'field_title'),
+      supervisor: text(student, 'supervisor'),
+      firstRegistrationSession: text(student, 'first_reg_session'),
+    },
+    clearedAt: text(data, 'date_paid') || null,
+    status: text(data, 'clearance_status'),
+    signatory: {
+      title: text(signatory, 'title'),
+      name: text(signatory, 'name'),
+      credentials: text(signatory, 'credentials') || undefined,
+    },
+  }
+  return record
 }
 
 function escapeHtml(value: string) {
@@ -45,15 +126,20 @@ function imageUrl(value?: string | null) {
   try { const url = new URL(value, window.location.origin); return ['https:', 'http:'].includes(url.protocol) ? escapeHtml(url.href) : '' } catch { return '' }
 }
 
+function splitStudentName(value: string) {
+  const [surname = '', ...otherNames] = value.trim().split(/\s+/).filter(Boolean)
+  return { surname, otherNames: otherNames.join(' ') }
+}
+
 export function buildFinancialClearanceDocument(record: FinancialClearance, demo: boolean): string {
   const student = record.student
   const totals = clearanceTotals(record)
-  const issued = !demo && totals.balance === 0
+  const issued = !demo && (record.status ? record.status.toLowerCase() === 'cleared' : totals.balance === 0)
   const money = (value: number) => `₦${value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const brand = new URL(`${import.meta.env.BASE_URL}brand/`, window.location.origin)
   const field = (label: string, value?: string) => `<div class="field"><span>${escapeHtml(label)}:</span><b>${escapeHtml(value || 'Not provided')}</b></div>`
   const details = [
-    ['Surname', student.surname], ['Other Names', student.otherNames], ['Gender', student.gender],
+    ...(student.fullName ? [['Full Name', student.fullName]] : [['Surname', student.surname], ['Other Names', student.otherNames]]), ['Gender', student.gender],
     ['Marital Status', student.maritalStatus], ['Telephone', student.telephone], ['E-mail address', student.email],
     ['Faculty', student.faculty], ['Department', student.department], ['Degree/Diploma', student.degree],
     ['Mode of Study', student.modeOfStudy], ['Field of Interest', student.fieldOfInterest], ['Supervisor', student.supervisor],
@@ -71,6 +157,7 @@ export function buildFinancialClearanceDocument(record: FinancialClearance, demo
 <div class="biodata"><div>${details}</div><div class="passport">${passport ? `<img src="${passport}" alt="Student passport">` : 'Passport not provided'}</div></div>
 <table><thead><tr><th>Cost Item</th><th>Amount (₦)</th></tr></thead><tbody>${record.items.map((item) => `<tr><td>${escapeHtml(item.description)}</td><td>${money(item.amount)}</td></tr>`).join('')}</tbody><tfoot><tr><th>TOTAL</th><td>${money(totals.total)}</td></tr></tfoot></table>
 <div class="position"><span>Confirmed payments: <b>${money(totals.paid)}</b></span><span>Outstanding balance: <b>${money(totals.balance)}</b></span></div>
-<div class="signature"><p><b>Secretary Postgraduate School</b></p><p>Sign below with Date${issued && record.clearedAt ? ` (${escapeHtml(new Date(record.clearedAt).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }))})` : ''}</p>${signature ? `<img src="${signature}" alt="Secretary signature">` : '<div class="blank"></div>'}</div>
+${record.acceptanceFee ? `<div class="position"><span>Acceptance fee: <b>${money(record.acceptanceFee.total)}</b></span><span>Paid: <b>${money(record.acceptanceFee.paid)}</b></span><span>Outstanding: <b>${money(record.acceptanceFee.balance)}</b></span></div>` : ''}
+<div class="signature"><p><b>${escapeHtml(record.signatory?.title || 'Secretary Postgraduate School')}</b></p>${record.signatory?.name ? `<p><b>${escapeHtml(record.signatory.name)}</b></p>` : ''}${record.signatory?.credentials ? `<p>${escapeHtml(record.signatory.credentials)}</p>` : ''}<p>Sign below with Date<br>${issued && record.clearedAt ? ` (${escapeHtml(new Date(record.clearedAt).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }))})` : ''}</p>${signature ? `<img src="${signature}" alt="Secretary signature">` : '<div class="blank"></div>'}</div>
 ${totals.balance > 0 ? '<p class="note">Printing becomes available after the session is fully paid.</p>' : ''}</main></body></html>`
 }

@@ -67,11 +67,13 @@ function mappedValues(source: Record<string, unknown>): ExtensionProgrammeValues
     department: text(source.department),
     degree: text(source.degree),
     modeOfStudy: text(source.mode_of_study),
+    fieldTitle: text(source.field_title),
+    entrySession: text(source.entry_session),
     session: text(source.sec),
     address: text(source.address),
-    sponsor: text(source.sponsor),
+    sponsor: text(source.sponsor ?? source.sponsor_details),
     sponsorAddress: text(source.sponsor_address),
-    employer: text(source.employer),
+    employer: text(source.employer ?? source.employer_details),
     employerAddress: text(source.employer_address),
     reason: text(source.reason),
     commitment: text(source.commitment),
@@ -84,29 +86,27 @@ export async function loadExtensionProgramme(signal: AbortSignal): Promise<Exten
   const prefill = object(payload.prefill)
   if (!prefill) throw new Error('The server returned incomplete programme extension details.')
   const existing = object(payload.existing_application) as ExtensionApplication | null
+  const sessionsElapsed = count(payload.sessions_elapsed ?? payload.sessions_spent)
+  const maxSessions = count(payload.max_sessions)
   return {
-    eligible: payload.eligible === true,
-    sessionsSpent: count(payload.sessions_spent),
-    maxSessions: count(payload.max_sessions),
+    eligible: typeof payload.eligible === 'boolean' ? payload.eligible : maxSessions > 0 && sessionsElapsed >= maxSessions,
+    sessionsSpent: sessionsElapsed,
+    maxSessions,
     values: { ...mappedValues(prefill), ...(existing ? mappedValues({ ...prefill, ...existing }) : {}) },
     existingApplication: existing,
   }
 }
 
 export function extensionProgrammePayload(values: ExtensionProgrammeValues) {
+  const sponsorDetails = [values.sponsor, values.sponsorAddress].map((value) => value?.trim()).filter(Boolean).join(', ')
+  const employerDetails = [values.employer, values.employerAddress].map((value) => value?.trim()).filter(Boolean).join(', ')
   return {
-    sec: values.session.trim(),
-    matricno: values.matric.trim(),
     address: values.address.trim(),
     email: values.email.trim(),
     telephone: values.phone.trim(),
-    sponsor: values.sponsor.trim() || null,
-    sponsor_address: values.sponsorAddress.trim() || null,
-    employer: values.employer.trim() || null,
-    employer_address: values.employerAddress.trim() || null,
-    reason: values.reason.trim(),
+    sponsor_details: sponsorDetails || null,
+    employer_details: employerDetails || null,
     commitment: values.commitment.trim(),
-    finance_plan: values.financePlan.trim(),
   }
 }
 

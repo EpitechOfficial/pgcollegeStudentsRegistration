@@ -1,12 +1,21 @@
-import BrandLockup from './BrandLockup'
+import BrandLockup from "./BrandLockup";
 
 function Placeholder({ className }: { className: string }) {
-  return <div className={`rounded-lg bg-slate-200 motion-safe:animate-pulse ${className}`} />
+  return (
+    <div
+      className={`rounded-lg bg-slate-200 motion-safe:animate-pulse ${className}`}
+    />
+  );
 }
 
 export default function PortalLoading() {
   return (
-    <div role="status" aria-live="polite" aria-busy="true" className="min-h-screen bg-[#F5F7F9] pb-8">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className="min-h-screen bg-[#F5F7F9] pb-8"
+    >
       <span className="sr-only">Loading your portal…</span>
       <div aria-hidden="true">
         <div className="px-3 pt-4 sm:px-5 sm:pt-5">
@@ -29,7 +38,10 @@ export default function PortalLoading() {
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {[0, 1, 2].map((item) => (
-              <div key={item} className="space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div
+                key={item}
+                className="space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              >
                 <Placeholder className="h-4 w-32" />
                 <Placeholder className="h-8 w-40" />
                 <Placeholder className="h-3 w-24" />
@@ -42,7 +54,10 @@ export default function PortalLoading() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[0, 1, 2, 3, 4, 5].map((item) => (
-              <div key={item} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div
+                key={item}
+                className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              >
                 <Placeholder className="h-12 w-12 shrink-0" />
                 <div className="flex-1 space-y-3">
                   <Placeholder className="h-4 w-32 max-w-full" />
@@ -54,5 +69,5 @@ export default function PortalLoading() {
         </div>
       </div>
     </div>
-  )
+  );
 }

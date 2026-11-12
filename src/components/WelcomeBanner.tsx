@@ -25,9 +25,10 @@ export default function WelcomeBanner({ greeting = true }: { greeting?: boolean 
             </Heading>
             <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs">
               {[
-                ['Programme', student.programme],
                 ['Faculty', student.faculty],
                 ['Department', student.department],
+                ['Degree', student.degree],
+                ['Programme', student.programme],
                 ['Mode of Study', student.modeOfStudy],
               ].map(([label, value]) => (
                 <div key={label} className="flex min-w-0 max-w-full flex-wrap items-baseline gap-1.5">

@@ -70,14 +70,21 @@ export function suspensionRecord(payload: Record<string, unknown>) {
     matric: text(profile.matricno), faculty: text(profile.faculty), department: text(profile.department),
     degree: text(profile.degree), modeOfStudy: text(profile.mode_of_study), firstRegistration: text(profile.first_reg_session),
   }
-  const fields: Record<string, string> = { matric: 'matricno', session: 'sec', address: 'address', semesters: 'sem_completed', reason: 'reason_suspension', period: 'susp_period', resume: 'resumption', sponsor: 'sponsor', sponsorPhone: 'sponsor_telno', sponsorEmail: 'sponsor_email', sponsorAddress: 'sponsor_address', employer: 'employer', employerPhone: 'employer_telno', employerEmail: 'employer_email', employerAddress: 'employer_address' }
+  const fields: Record<string, string> = { matric: 'matricno', session: 'resumption_session', address: 'address', semesters: 'sem_completed', reason: 'reason_suspension', period: 'susp_period', resume: 'resumption', sponsor: 'sponsor', sponsorPhone: 'sponsor_telno', sponsorEmail: 'sponsor_email', sponsorAddress: 'sponsor_address', employer: 'employer', employerPhone: 'employer_telno', employerEmail: 'employer_email', employerAddress: 'employer_address' }
   for (const [key, field] of Object.entries(fields)) {
     if (record && field in record) values[key] = text(record[field])
   }
   if (values.period === '1 Semester') values.period = '1'
   if (values.period === '2 Semesters') values.period = '2'
   const status = record ? text(record.status).trim().toLowerCase() : ''
-  return { values, exists: record !== null, status, locked: record !== null && (status !== 'pending' || !!record.date_approved || record.reactivated === true), approvedDate: text(record?.date_approved) }
+  return {
+    values,
+    exists: record !== null,
+    status,
+    locked: record !== null && (status !== 'pending' || !!record.date_approved || record.reactivated === true),
+    approvedDate: text(record?.date_approved),
+    reactivated: record?.reactivated === true,
+  }
 }
 
 export async function loadSuspension(signal: AbortSignal) {

@@ -1,5 +1,5 @@
-import { Mail, Phone } from 'lucide-react'
-import { COLLEGE } from '../data/portal'
+import { Mail, Phone } from "lucide-react";
+import { COLLEGE } from "../data/portal";
 
 export default function PortalFooter() {
   return (
@@ -9,7 +9,8 @@ export default function PortalFooter() {
         <div className="flex flex-col items-center justify-between gap-4 px-4 py-6 sm:flex-row sm:px-6">
           {/* Copyright */}
           <p className="text-center text-xs text-white/70 sm:text-left">
-            © {new Date().getFullYear()} {COLLEGE.shortName}, {COLLEGE.university}. All Rights Reserved.
+            © {new Date().getFullYear()} {COLLEGE.shortName},{" "}
+            {COLLEGE.university}. All Rights Reserved.
           </p>
 
           {/* Help Desk Channels */}
@@ -18,20 +19,28 @@ export default function PortalFooter() {
               href={`mailto:${COLLEGE.email}`}
               className="inline-flex items-center gap-1.5 text-white/85 transition-colors hover:text-gold-light hover:underline"
             >
-              <Mail className="h-3.5 w-3.5 text-gold-light" aria-hidden="true" />
+              <Mail
+                className="h-3.5 w-3.5 text-gold-light"
+                aria-hidden="true"
+              />
               <span>{COLLEGE.email}</span>
             </a>
-            <span className="hidden text-white/30 sm:inline" aria-hidden="true">•</span>
+            <span className="hidden text-white/30 sm:inline" aria-hidden="true">
+              •
+            </span>
             <a
-              href={`tel:${COLLEGE.phone.replace(/\s/g, '')}`}
+              href={`tel:${COLLEGE.phone.replace(/\s/g, "")}`}
               className="inline-flex items-center gap-1.5 text-white/85 transition-colors hover:text-gold-light hover:underline"
             >
-              <Phone className="h-3.5 w-3.5 text-gold-light" aria-hidden="true" />
+              <Phone
+                className="h-3.5 w-3.5 text-gold-light"
+                aria-hidden="true"
+              />
               <span>{COLLEGE.phone} (9am - 4pm)</span>
             </a>
           </div>
         </div>
       </div>
     </footer>
-  )
+  );
 }

@@ -1,5 +1,7 @@
 import { STUDENT } from './portal'
 import { activeLetterOfficials, type LetterOfficial } from './letterOfficials'
+import { apiUrl } from './api'
+import { isDemoSession, restoreSession } from './auth'
 
 export interface NotificationResultData {
   name: string
@@ -14,12 +16,93 @@ export interface NotificationResultData {
   awardDate?: string
   remarks?: string
   signatureUrl?: string
+  signatory?: {
+    officer_type?: string
+    title: string
+    name: string
+    credentials?: string
+  }
 }
 
 // Replace with approved backend result records when the result endpoint is connected.
 const DEMO_RESULT: NotificationResultData = {
   name: STUDENT.name, matric: STUDENT.matric, department: STUDENT.department,
   faculty: STUDENT.faculty, degreeAward: STUDENT.programme,
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+}
+
+function textValue(...values: unknown[]): string {
+  const value = values.find((item) => (typeof item === 'string' || typeof item === 'number') && String(item).trim())
+  return value == null ? '' : String(value).trim()
+}
+
+/** Load the issued Notification of Result. `/nor` is the source of truth. */
+export async function loadNotificationResult(signal: AbortSignal): Promise<NotificationResultData> {
+  if (isDemoSession()) return DEMO_RESULT
+  const token = restoreSession()
+  if (!token) throw new Error('Please sign in again.')
+  const response = await fetch(apiUrl('nor'), {
+    signal: AbortSignal.any([signal, AbortSignal.timeout(20000)]),
+    headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+  })
+  let payload: Record<string, unknown>
+  try {
+    const body: unknown = await response.json()
+    const parsed = record(body)
+    if (!parsed) throw new Error()
+    payload = parsed
+  } catch {
+    throw new Error('The server returned an invalid notification of result response.')
+  }
+  if (!response.ok || payload.success !== true) {
+    throw new Error(textValue(payload.message) || 'Unable to load your notification of result.')
+  }
+
+  const data = record(payload.data) ?? record(payload.nor)
+  if (!data) throw new Error('The server returned incomplete notification of result details.')
+  const programme = record(data.programme)
+  const student = record(data.student)
+  const signatory = record(data.signatory)
+  const composedName = [data.other_names ?? data.Other_names, data.surname ?? data.Surname]
+    .filter((value) => typeof value === 'string' && value.trim())
+    .map((value) => String(value).trim())
+    .join(' ')
+  const surname = textValue(data.surname, data.Surname)
+  const salutation = textValue(data.salutation, data.formatted_title)
+  const recipientSalutation = salutation
+    ? `${salutation.replace(/\.+$/, '')}.${surname ? ` ${surname}` : ''}`
+    : surname
+  const studentRecord = textValue(data.student_record)
+  const eligibility = studentRecord && !['PASS', 'TM'].includes(studentRecord.toUpperCase())
+    ? `You are also eligible to proceed to ${studentRecord}.`
+    : ''
+  const result: NotificationResultData = {
+    name: textValue(data.name, data.full_name, data.formatted_name, student?.name, composedName),
+    matric: textValue(data.matric, data.matricno, data.matric_no, student?.matricno, data.numeration, student?.numeration),
+    department: textValue(data.department_display, data.department, programme?.department, student?.department),
+    faculty: textValue(data.faculty_display, data.faculty, programme?.faculty, student?.faculty),
+    degreeAward: textValue(data.rendition, data.degree_award, data.naration, data.degree, programme?.degree, student?.degree),
+    fieldTitle: textValue(data.field_display, data.field_title, data.field_of_interest, programme?.field_of_interest) || undefined,
+    salutation: recipientSalutation || undefined,
+    address: textValue(data.address, data.contact_address, data.department_display) || undefined,
+    approvalDate: textValue(data.approval_date, data.date_approved, data.approval) || undefined,
+    awardDate: textValue(data.effective_award_date, data.award_date, data.effective_date, data.effectivedate) || undefined,
+    remarks: textValue(data.remarks) || eligibility || undefined,
+    signatureUrl: textValue(data.signature_url, data.signature) || undefined,
+    signatory: signatory && textValue(signatory.name) && textValue(signatory.title) ? {
+      officer_type: textValue(signatory.officer_type) || undefined,
+      title: textValue(signatory.title),
+      name: textValue(signatory.name),
+      credentials: textValue(signatory.credentials) || undefined,
+    } : undefined,
+  }
+  if (!result.name || !result.matric || !result.department || !result.faculty || !result.degreeAward) {
+    throw new Error('The server returned incomplete notification of result details.')
+  }
+  return result
 }
 
 function escapeHtml(value: string): string {
@@ -52,6 +135,7 @@ export function buildNotificationResultDocument(data: NotificationResultData = D
   const logo = escapeHtml(new URL(`${import.meta.env.BASE_URL}brand/ui-logo.png`, window.location.origin).href)
   const active = activeLetterOfficials(officials)
   const registrar = active.find((officer) => officer.officer_type === 'deputy_registrar')
+  const letterSignatory = data.signatory ?? registrar
   const positions = { left: ['provost', 'deputy_registrar'], right: ['deputy_provost_admin', 'deputy_provost_academic'] }
   const officers = (side: 'left' | 'right') => positions[side].map((type) => {
     const officer = active.find((record) => record.officer_type === type)
@@ -103,12 +187,12 @@ body{margin:0;background:#f5f7f9;color:#111827;font:13.5px/1.4 Roboto,Arial,Helv
 </style></head><body><main class="letter"><header class="letter-head"><h2>University of Ibadan, Nigeria</h2><h3>The Postgraduate College</h3><p>Telegram: University of Ibadan</p></header>
 <div class="officers"><div class="office-side">${officers('left')}</div><div class="center-logo"><img src="${logo}" alt="University of Ibadan logo"></div><div class="office-side office-right">${officers('right')}</div></div>
 <p class="letter-date"><em><strong>Date: ${date(data.approvalDate)}</strong></em></p>
-<div class="recipient"><p><em><strong>${escapeHtml(data.name)}</strong></em></p><p><em><strong>(S I. ${escapeHtml(data.matric)})</strong></em></p><div class="recipient-address"><em><strong>${escapeHtml(data.address || `${department}\nUniversity of Ibadan.`)}</strong></em></div><p class="salutation"><em><strong>DEAR ${escapeHtml(data.salutation || data.name)},</strong></em></p></div>
+<div class="recipient"><p><em><strong>${escapeHtml(data.name)}</strong></em></p><p><em><strong>(S I. ${escapeHtml(data.matric)})</strong></em></p><div class="recipient-address"><em><strong>${escapeHtml(`${department},\nUniversity of Ibadan.`)}</strong></em></div><p class="salutation"><em><strong>DEAR ${escapeHtml(data.salutation || data.name)},</strong></em></p></div>
 <h1 class="heading">Notification of Higher Degree Result</h1>
 <div class="letter-body"><p>I have pleasure in informing you that, sequel to the ratification of the <em><strong>${escapeHtml(data.faculty)}</strong></em> Postgraduate Committee and the Board of the Postgraduate College, Senate has approved the recommendation of the examiners that the degree of <em><strong>${escapeHtml([data.degreeAward, data.fieldTitle].filter(Boolean).join(' '))}</strong></em> of this University be conferred on you.</p>
 <p>The effective date of the award is <em><strong>${date(data.awardDate)}</strong></em></p>
 ${data.remarks ? `<p class="remarks"><strong><em>${escapeHtml(data.remarks)}</em></strong></p>` : ''}
 <p>On behalf of the Vice Chancellor, I congratulate you on the successful completion of your programme.</p></div>
-<div class="signatory"><p>Yours Sincerely,</p>${registrar && signature ? signature : '<div class="signature-space" aria-label="Signature not provided"></div>'}<p><strong>${escapeHtml(registrar?.name || 'Signatory not provided')}</strong><br><em><strong>${escapeHtml(registrar?.title || '')}<br>(Exams &amp; Records)</strong></em></p><p class="matric"><strong><em>${escapeHtml(data.matric)}</em></strong></p></div>
+<div class="signatory"><p>Yours Sincerely,</p>${letterSignatory && signature ? signature : '<div class="signature-space" aria-label="Signature not provided"></div>'}<p><strong>${escapeHtml(letterSignatory?.name || 'Signatory not provided')}</strong><br><em><strong>${escapeHtml(letterSignatory?.title || '')}<br>(Exams &amp; Records)</strong></em></p><p class="matric"><strong><em>${escapeHtml(data.matric)}</em></strong></p></div>
 </main></body></html>`
 }

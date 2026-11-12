@@ -64,7 +64,7 @@ function object(value: unknown): Record<string, unknown> {
 const fields: Record<string, string> = {
   name: 'fullName', numeration: 'applicationNumber', matricno: 'matric', email: 'email', telephone: 'phone',
   faculty: 'faculty', department: 'department', degree: 'degree', mode_of_study: 'modeOfStudy',
-  session: 'session', address: 'address', date_first_reg: 'firstRegistration', date_last_reg: 'lastRegistration',
+  session: 'session', resumption_session: 'session', address: 'address', date_first_reg: 'firstRegistration', date_last_reg: 'lastRegistration',
   sem_completed: 'semesters', susp_period: 'suspensionDuration', sponsor_details: 'sponsor', employer_details: 'employer',
   commitment: 'ready', finance_plan: 'finance',
 }
@@ -90,11 +90,19 @@ export async function loadReactivation(signal: AbortSignal) {
   const payload = await requestReactivation(signal)
   const prefill = object(payload.prefill)
   const values = reactivationValues(prefill)
+  const suspensionSource = payload.suspension ?? payload.suspension_status
+  const suspension = suspensionSource == null ? null : object(suspensionSource)
+  if (!values.session && typeof suspension?.resumption_session === 'string') {
+    values.session = suspension.resumption_session
+  }
   const joined = (name: string) => [prefill[name], prefill[`${name}_address`]].filter(value => typeof value === 'string' && value.trim()).join('\n')
   values.sponsor = joined('sponsor'); values.employer = joined('employer')
   values.kind = 'suspended'
-  const status = payload.suspension_status == null ? null : object(payload.suspension_status)
-  return { values, status: typeof status?.status === 'string' ? status.status : '', reactivated: status?.reactivated === true }
+  return {
+    values,
+    status: typeof suspension?.status === 'string' ? suspension.status.trim().toLowerCase() : '',
+    reactivated: suspension?.reactivated === true,
+  }
 }
 
 export async function generateReactivation(values: ReactivationValues, signal: AbortSignal) {

@@ -25,10 +25,18 @@ export default function DashboardPage() {
   const paymentLapsed = user?.lapse_status?.payment_lapse === true
   const sessionLapsed = user?.lapse_status?.session_lapse === true
   const showExamination = isPhdDegree(programme?.degree)
+  const norReady = isDemoSession() || user?.nor_ready === true
+  const conversionAvailable = typeof user?.conversion_url === 'string' && !!user.conversion_url.trim()
   const sections = SERVICE_SECTIONS.filter((section) => {
     if (paymentLapsed) return section.id === 'payments'
     if (sessionLapsed) return section.id === 'payments' || section.id === 'process'
     return section.id !== 'examination' || showExamination
+  }).map((section) => {
+    if (section.id === 'process')
+      return { ...section, services: section.services.filter((service) => service.id !== 'result-notification' || norReady) }
+    if (section.id === 'examination')
+      return { ...section, services: section.services.filter((service) => service.id !== 'conversion' || conversionAvailable) }
+    return section
   })
   const [financials, setFinancials] = useState<FinancialSummary | null>(isDemoSession() ? FINANCIALS : null)
   const [financialsLoading, setFinancialsLoading] = useState(true)

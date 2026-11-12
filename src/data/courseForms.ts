@@ -45,42 +45,68 @@ export async function loadCourseForms(signal: AbortSignal): Promise<CourseFormRe
     return confirmedForms
   }
   const payload = await courseRequest('print', signal)
-  return mapCoursePrint(payload.data)
+  return mapCoursePrintHistory(payload.data)
 }
 
-export function mapCoursePrint(value: unknown): CourseFormRecord[] {
-  const record = object(value)
-  const courses = courseList(record.courses)
-  if (!courses.length) return []
-  const profile = object(record.student)
-  const text = (value: unknown): string => typeof value === 'string' || typeof value === 'number' ? String(value) : ''
-  if (!text(profile.numeration) || !text(record.session) || typeof record.locked !== 'boolean') throw new Error('Invalid course form profile.')
-  const contact = (value: unknown): ContactDetails | undefined => {
-    if (value == null) return undefined
-    const row = object(value)
-    return { name: text(row.name), address: text(row.address), telephone: text(row.telephone), email: text(row.email) }
-  }
+const text = (value: unknown): string => typeof value === 'string' || typeof value === 'number' ? String(value) : ''
+const contact = (value: unknown): ContactDetails | undefined => {
+  if (value == null) return undefined
+  const row = object(value)
+  return { name: text(row.name), address: text(row.address), telephone: text(row.telephone), email: text(row.email) }
+}
+const education = (value: unknown): EducationDetails[] => Array.isArray(value) ? value.map((entry) => {
+  const row = object(entry)
+  return { school: text(row.school), from: text(row.from_year), to: text(row.to_year), qualification: text(row.degree), discipline: text(row.course) }
+}) : []
+const student = (profile: Record<string, unknown>): ReceiptDetails => ({
+  surname: text(profile.surname), otherNames: text(profile.other_names), matric: text(profile.matric_no),
+  gender: text(profile.gender), maritalStatus: text(profile.marital_status), telephone: text(profile.telephone), email: text(profile.email),
+  faculty: text(profile.faculty), department: text(profile.department), degree: text(profile.degree),
+  modeOfStudy: text(profile.mode_of_study), fieldOfInterest: text(profile.field_title), firstRegistrationSession: text(profile.first_reg_session),
+})
+
+function mapSession(record: Record<string, unknown>, shared: Record<string, unknown>): CourseFormRecord {
+  const profile = object(shared.student ?? record.student)
+  const session = text(record.session)
+  const applicationNumber = text(profile.numeration)
+  if (!applicationNumber || !session || typeof record.locked !== 'boolean') throw new Error('Invalid course form profile.')
   const signatory = record.locked && record.signatory ? object(record.signatory) : null
-  return [{
-    id: `${text(profile.numeration)}-${text(record.session)}`,
-    applicationNumber: text(profile.numeration), session: text(record.session),
-    registeredAt: text(record.locked_date), lockedAt: text(record.locked_date), locked: record.locked,
-    courses,
-    student: {
-      surname: text(profile.surname), otherNames: text(profile.other_names), matric: text(profile.matric_no),
-      gender: text(profile.gender), maritalStatus: text(profile.marital_status), telephone: text(profile.telephone), email: text(profile.email),
-      faculty: text(profile.faculty), department: text(profile.department), degree: text(profile.degree),
-      modeOfStudy: text(profile.mode_of_study), fieldOfInterest: text(profile.field_of_interest), firstRegistrationSession: text(profile.first_reg_session),
-    },
-    sponsor: contact(record.sponsor), employer: contact(record.employer),
-    education: Array.isArray(record.education) ? record.education.map((value) => {
-      const row = object(value)
-      return { school: text(row.school), from: text(row.from_year), to: text(row.to_year), qualification: text(row.degree), discipline: text(row.course) }
-    }) : [],
-    passportUrl: text(record.passport_url ?? profile.passport_url),
-    signatureUrl: signatory ? text(record.signature_url) : null,
+  return {
+    id: `${applicationNumber}-${session}`,
+    applicationNumber,
+    session,
+    registeredAt: text(record.locked_date),
+    lockedAt: text(record.locked_date),
+    locked: record.locked,
+    courses: courseList(record.courses),
+    student: student(profile),
+    sponsor: contact(record.sponsor ?? shared.sponsor),
+    employer: contact(record.employer ?? shared.employer),
+    education: education(record.education ?? shared.education),
+    passportUrl: text(record.passport_url ?? profile.passport_url ?? profile.passport_file ?? shared.passport_url),
+    signatureUrl: signatory ? text(record.signature_url ?? signatory.signature_url) : null,
     signatory: signatory ? { title: text(signatory.title), name: text(signatory.name), credentials: text(signatory.credentials) } : undefined,
-  }]
+  }
+}
+
+export function mapCoursePrintHistory(value: unknown): CourseFormRecord[] {
+  const record = object(value)
+  if (!Array.isArray(record.sessions)) throw new Error('Invalid course form history.')
+  return record.sessions.map((entry) => mapSession(object(entry), record))
+}
+
+export async function loadCourseForm(record: CourseFormRecord, signal: AbortSignal): Promise<CourseFormRecord> {
+  if (isDemoSession()) return record
+  const payload = await courseRequest(`session-print?session=${encodeURIComponent(record.session)}`, signal)
+  const printable = mapSession(object(payload.data), object(payload.data))
+  return {
+    ...printable,
+    student: printable.student ?? record.student,
+    sponsor: printable.sponsor ?? record.sponsor,
+    employer: printable.employer ?? record.employer,
+    education: printable.education?.length ? printable.education : record.education,
+    passportUrl: printable.passportUrl || record.passportUrl,
+  }
 }
 export function buildCourseForm(record: CourseFormRecord): string {
   const escape = (value?: string | null) => (value || 'Not provided').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!)

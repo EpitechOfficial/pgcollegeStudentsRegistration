@@ -125,7 +125,7 @@ export default function RegisterCoursesPage() {
     setConfirmOpen(true)
   }
   function handlePrint() {
-    if (!confirmed) { showToast('error', 'Confirm your selection before printing.'); return }
+    if (!locked) { showToast('warning', 'Confirm and lock your course registration before printing the course form.'); return }
     setPrintOpen(true)
   }
   const { logout: handleLogout, loggingOut } = useLogout()
@@ -398,7 +398,7 @@ export default function RegisterCoursesPage() {
               <button
                 type="button"
                 onClick={handlePrint}
-                disabled={!confirmed || loading || loadError || !!action}
+                disabled={loading || loadError || !!action}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-white text-sm font-semibold text-[#212529] transition-colors hover:border-[#0A2B4F]/30 hover:bg-slate-50"
               >
                 <Printer className="h-4 w-4 text-[#1B3764]" aria-hidden="true" />

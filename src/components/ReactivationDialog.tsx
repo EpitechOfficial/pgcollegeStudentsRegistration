@@ -318,8 +318,8 @@ export default function ReactivationDialog({
           {preview
             ? "Reactivation Form Preview"
             : kind === "lapsed"
-              ? "Reactivate Lapsed Registration"
-              : "Reactivate Suspended Registration"}
+              ? "Reactivate Lapsed Programme"
+              : "Reactivate Suspended Programme"}
         </h2>
         <button
           type="button"

@@ -2,7 +2,11 @@
  * Support-agent mark: a person wearing a headset with mic, drawn in the
  * school's gold palette so it pops on the navy chat launcher.
  */
-export default function SupportAgentIcon({ className }: { className?: string }) {
+export default function SupportAgentIcon({
+  className,
+}: {
+  className?: string;
+}) {
   return (
     <svg
       viewBox="0 0 64 64"
@@ -39,10 +43,7 @@ export default function SupportAgentIcon({ className }: { className?: string }) 
       {/* Mic tip */}
       <circle cx="28.5" cy="46" r="3" fill="#B98400" />
       {/* Tie */}
-      <path
-        d="M32 41.5 28 44l2.4 8h3.2L36 44l-4-2.5Z"
-        fill="#B98400"
-      />
+      <path d="M32 41.5 28 44l2.4 8h3.2L36 44l-4-2.5Z" fill="#B98400" />
     </svg>
-  )
+  );
 }
