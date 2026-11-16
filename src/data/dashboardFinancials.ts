@@ -12,5 +12,5 @@ export async function loadDashboardFinancials(signal: AbortSignal): Promise<Fina
   const amountPaid = payments.records
     .filter((record) => record.feeType === 'school-fees' && record.status === 'successful')
     .reduce((total, record) => total + record.amount, 0)
-  return { totalFees: schedule.total, amountPaid, walletBalance: wallet.balance, session: schedule.session }
+  return { totalFees: schedule.total, originalTotalFees: schedule.originalAmount, amountPaid, walletBalance: wallet.balance, session: schedule.session }
 }

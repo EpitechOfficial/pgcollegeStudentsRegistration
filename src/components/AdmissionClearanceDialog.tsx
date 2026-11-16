@@ -34,6 +34,7 @@ export default function AdmissionClearanceDialog({
     () => (result ? buildAdmissionClearanceDocument(result) : ""),
     [result],
   );
+  const printable = result?.data.clearance.cleared === true;
 
   useEffect(() => {
     mounted.current = true;
@@ -83,7 +84,7 @@ export default function AdmissionClearanceDialog({
         );
         const link = document.createElement("a");
         link.href = url;
-        link.download = "admission-clearance-form.html";
+        link.download = "student-clearance-certificate.html";
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         showToast("success", "Admission clearance form download started.");
@@ -116,7 +117,7 @@ export default function AdmissionClearanceDialog({
             Admission Clearance Form
           </h2>
           <p className="mt-1 text-xs text-slate-500">
-            Read-only admission records. No manual filling is required.
+            Official document verification and admission clearance certificate.
           </p>
         </div>
         <button
@@ -164,10 +165,15 @@ export default function AdmissionClearanceDialog({
         />
       )}
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-slate-200 p-4">
+        {result && !printable && (
+          <p className="mr-auto text-xs font-medium text-amber-700">
+            Printing will be available after admission clearance is approved.
+          </p>
+        )}
         {/* {result?.source === 'demo' && <p className="mr-auto text-xs text-slate-500">Demo preview — backend records are not connected.</p>} */}
-        <button
+        {/* <button
           type="button"
-          disabled={fetching || !!error || !!action || !result}
+          disabled={fetching || !!error || !!action || !result || !printable}
           aria-busy={action === "download"}
           className={secondary}
           onClick={() => void run("download")}
@@ -178,10 +184,10 @@ export default function AdmissionClearanceDialog({
             <Download className="h-4 w-4" />
           )}
           {action === "download" ? "Preparing…" : "Download Form"}
-        </button>
+        </button> */}
         <button
           type="button"
-          disabled={fetching || !!error || !!action || !ready}
+          disabled={fetching || !!error || !!action || !ready || !printable}
           aria-busy={action === "print"}
           className={primary}
           onClick={() => void run("print")}

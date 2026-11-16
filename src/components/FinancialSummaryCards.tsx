@@ -25,6 +25,10 @@ export default function FinancialSummaryCards({
       id: "total-fees",
       label: "Total Fees",
       value: value(data?.totalFees),
+      originalValue:
+        !loading && data?.originalTotalFees != null
+          ? formatNaira(data.originalTotalFees)
+          : null,
       subtext: data?.session ? `${data.session} Session` : "Current session",
       icon: Receipt,
       cardBg: "border-[#16466E] bg-gradient-to-br from-[#0A2B4F] to-[#16466E]",
@@ -37,6 +41,7 @@ export default function FinancialSummaryCards({
       id: "amount-paid",
       label: "Amount Paid",
       value: value(data?.amountPaid),
+      originalValue: null,
       subtext: "All school fee payments",
       icon: CheckCircle2,
       cardBg:
@@ -50,6 +55,7 @@ export default function FinancialSummaryCards({
       id: "wallet-balance",
       label: "Wallet Balance",
       value: value(data?.walletBalance),
+      originalValue: null,
       subtext: "Available wallet funds",
       icon: Wallet,
       cardBg: "border-rose-700 bg-gradient-to-br from-rose-900 to-rose-700",
@@ -83,6 +89,13 @@ export default function FinancialSummaryCards({
             </div>
 
             <div className="mt-3">
+              {card.originalValue && (
+                <p
+                  className={`mb-0.5 text-sm font-semibold line-through decoration-2 ${enhancedStyle ? "text-slate-500" : card.subtextClass}`}
+                >
+                  {card.originalValue}
+                </p>
+              )}
               <p
                 className={`text-xl font-bold tracking-tight sm:text-2xl ${enhancedStyle ? "text-[#212529]" : "text-white"}`}
               >

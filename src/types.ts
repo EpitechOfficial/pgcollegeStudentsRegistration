@@ -14,6 +14,7 @@ export interface Student {
 
 export interface FinancialSummary {
   totalFees: number
+  originalTotalFees?: number | null
   amountPaid: number
   walletBalance: number
   session: string

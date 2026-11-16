@@ -1,82 +1,173 @@
-import { COLLEGE, CURRENT_SESSION, STUDENT } from "./portal";
-import { isDemoSession, restoreSession } from "./auth";
+import { CURRENT_SESSION, STUDENT } from "./portal";
 import { apiUrl } from "./api";
+import { isDemoSession, restoreSession } from "./auth";
 
-type RecordData = Record<string, unknown>;
+type JsonRecord = Record<string, unknown>;
+
 export interface AdmissionClearanceData {
-  applicant: RecordData;
-  application: RecordData;
-  biodata: RecordData;
-  sponsors: RecordData[];
-  education: RecordData[];
+  student: { applicationNumber: string; fullName: string; sessionOfEntry: string };
+  programme: { faculty: string; department: string; degree: string; fieldTitle: string };
+  verification: {
+    firstDegree: string;
+    secondDegree: string;
+    otherDocument: string;
+    nysc: string;
+    transcript: string;
+    oLevel: string;
+    previousAdmission: string;
+    previousMatricNumber: string;
+    verifierName: string;
+    verifierDesignation: string;
+    dateCleared: string;
+  };
+  clearance: {
+    cleared: boolean;
+    status: string;
+    approverName: string;
+    approverDesignation: string;
+    signatureUrl: string;
+  };
+  certificate: { id: string; generatedAt: string };
 }
+
 export interface AdmissionClearanceResult {
   source: "backend" | "demo";
   data: AdmissionClearanceData;
 }
 
-function isRecord(value: unknown): value is RecordData {
-  return !!value && typeof value === "object" && !Array.isArray(value);
+function record(value: unknown, label: string): JsonRecord {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error(`Admission clearance ${label} is missing.`);
+  return value as JsonRecord;
+}
+
+function text(value: unknown): string {
+  return typeof value === "string" || typeof value === "number"
+    ? String(value).trim()
+    : "";
+}
+
+function first(source: JsonRecord, keys: string[]): string {
+  for (const key of keys) {
+    const value = text(source[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
+function affirmative(value: unknown): boolean {
+  if (value === true || value === 1) return true;
+  return ["yes", "cleared", "approved", "1", "true"].includes(
+    text(value).toLowerCase(),
+  );
 }
 
 export function admissionClearanceData(value: unknown): AdmissionClearanceData {
-  if (
-    !isRecord(value) ||
-    !isRecord(value.biodata) ||
-    !isRecord(value.programme) ||
-    !Array.isArray(value.sponsorship) ||
-    !value.sponsorship.every(isRecord) ||
-    !Array.isArray(value.educational_records) ||
-    !value.educational_records.every(isRecord)
-  ) {
-    throw new Error("Admission records have an unexpected format.");
-  }
+  const root = record(value, "response");
+  const student = record(root.student, "student details");
+  const programme = record(root.programme, "programme details");
+  const verification = record(root.verification, "verification details");
+  const clearance = record(root.clearance, "approval details");
+  const certificate =
+    root.certificate && typeof root.certificate === "object"
+      ? record(root.certificate, "certificate details")
+      : {};
+
+  const applicationNumber = first(student, ["application_number", "numeration", "appno"]);
+  const fullName =
+    first(student, ["full_name", "name"]) ||
+    [first(student, ["surname"]), first(student, ["other_names"])]
+      .filter(Boolean)
+      .join(" ");
+  if (!applicationNumber || !fullName)
+    throw new Error("Admission clearance student details are incomplete.");
+
+  const status = first(clearance, ["status", "clearance"]);
   return {
-    applicant: {
-      application_number: value.application_number,
-      name: value.biodata.name,
+    student: {
+      applicationNumber,
+      fullName,
+      sessionOfEntry: first(student, ["session_of_entry", "form_year", "session"]),
     },
-    application: {
-      ...value.programme,
-      form_number: value.form_number,
-      session: value.session,
+    programme: {
+      faculty: first(programme, ["faculty"]),
+      department: first(programme, ["department"]),
+      degree: first(programme, ["degree"]),
+      fieldTitle: first(programme, ["field_title", "field_of_interest"]),
     },
-    biodata: {
-      ...value.biodata,
-      local_government_area: value.biodata.local_govt_area,
-      passport_photo_url: value.biodata.passport_file,
+    verification: {
+      firstDegree: first(verification, ["first_degree"]),
+      secondDegree: first(verification, ["second_degree"]),
+      otherDocument: first(verification, ["other_document", "other_degree"]),
+      nysc: first(verification, ["nysc_verified", "nysc"]),
+      transcript: first(verification, ["transcript_verified", "transcript"]),
+      oLevel: first(verification, ["olevel_verified", "o_level"]),
+      previousAdmission: first(verification, ["previous_admission", "prev_admission"]),
+      previousMatricNumber: first(verification, ["previous_matric_number", "prev_matric_number"]),
+      verifierName: first(verification, ["verifier_name", "verifier_fullname", "admin_username"]),
+      verifierDesignation: first(verification, ["verifier_designation"]),
+      dateCleared: first(verification, ["date_cleared", "verification_date"]),
     },
-    sponsors: value.sponsorship,
-    education: value.educational_records,
+    clearance: {
+      cleared: affirmative(clearance.cleared ?? clearance.status ?? clearance.clearance),
+      status,
+      approverName: first(clearance, ["approver_name", "approver_fullname", "staff_name"]),
+      approverDesignation: first(clearance, ["approver_designation"]) || "Admissions Officer",
+      signatureUrl: first(clearance, ["signature_url"]),
+    },
+    certificate: {
+      id: first(certificate, ["id", "certificate_id", "doc_id"]),
+      generatedAt: first(certificate, ["generated_at", "issued_at"]),
+    },
   };
 }
 
-export async function loadAdmissionClearance(
-  signal: AbortSignal,
-): Promise<AdmissionClearanceResult> {
+export async function loadAdmissionClearance(signal: AbortSignal): Promise<AdmissionClearanceResult> {
   if (isDemoSession()) {
     await new Promise((resolve) => setTimeout(resolve, 300));
     signal.throwIfAborted();
     return {
       source: "demo",
       data: {
-        applicant: {
-          application_number: STUDENT.applicationNumber,
-          name: STUDENT.name,
+        student: {
+          applicationNumber: STUDENT.applicationNumber,
+          fullName: STUDENT.name,
+          sessionOfEntry: CURRENT_SESSION,
         },
-        application: {
-          session: CURRENT_SESSION,
+        programme: {
           faculty: STUDENT.faculty,
           department: STUDENT.department,
           degree: STUDENT.degree,
-          mode_of_study: STUDENT.modeOfStudy,
+          fieldTitle: STUDENT.programme,
         },
-        biodata: {},
-        sponsors: [],
-        education: [],
+        verification: {
+          firstDegree: "Yes",
+          secondDegree: "No",
+          otherDocument: "Discharge",
+          nysc: "Yes",
+          transcript: "Yes",
+          oLevel: "Yes",
+          previousAdmission: "No",
+          previousMatricNumber: "",
+          verifierName: "Admissions Verification Officer",
+          verifierDesignation: "Admissions Unit",
+          dateCleared: "2026-11-16 10:30:00",
+        },
+        clearance: {
+          cleared: true,
+          status: "Yes",
+          approverName: "Admissions Officer",
+          approverDesignation: "Admissions Officer",
+          signatureUrl: "",
+        },
+        certificate: {
+          id: `DEMO-${STUDENT.applicationNumber}`,
+          generatedAt: "2026-11-16 10:30:00",
+        },
       },
     };
   }
+
   const token = restoreSession();
   if (!token) throw new Error("Please sign in again.");
   const response = await fetch(apiUrl("clearance"), {
@@ -87,38 +178,16 @@ export async function loadAdmissionClearance(
   try {
     payload = await response.json();
   } catch {
-    throw new Error(
-      "The server returned an invalid admission clearance response. Please try again.",
-    );
+    throw new Error("The server returned an invalid admission clearance response. Please try again.");
   }
-  if (!isRecord(payload))
-    throw new Error(
-      "The server returned an invalid admission clearance response.",
-    );
-  if (!response.ok || payload.success !== true) {
-    throw new Error(
-      typeof payload.message === "string"
-        ? payload.message
-        : "Unable to retrieve admission records.",
-    );
-  }
-  return { source: "backend", data: admissionClearanceData(payload.data) };
-}
-
-function pick(
-  record: RecordData,
-  keys: string[],
-  fallback = "Not provided",
-): string {
-  for (const key of keys) {
-    const value = record[key];
-    if (
-      (typeof value === "string" && value.trim()) ||
-      typeof value === "number"
-    )
-      return String(value);
-  }
-  return fallback;
+  const body = record(payload, "response");
+  if (!response.ok || body.success !== true)
+    throw new Error(text(body.message) || "Unable to retrieve admission clearance details.");
+  const result: AdmissionClearanceResult = {
+    source: "backend",
+    data: admissionClearanceData(body.data),
+  };
+  return result;
 }
 
 function escapeHtml(value: string): string {
@@ -131,101 +200,63 @@ function escapeHtml(value: string): string {
   );
 }
 
-function date(value: string): string {
-  if (!value) return "Not provided";
-  const parsed = new Date(
-    /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value,
-  );
-  return Number.isFinite(parsed.getTime())
-    ? parsed.toLocaleDateString("en-NG", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
-    : value;
+function display(value: string, fallback = "Not Available"): string {
+  return escapeHtml(value || fallback);
 }
 
-function imageUrl(value: string): string {
+function formatDate(value: string, includeTime = false): string {
+  if (!value) return "Not Available";
+  const normalized = /^\d{4}-\d{2}-\d{2}(?:\s|$)/.test(value)
+    ? value.replace(" ", "T")
+    : value;
+  const parsed = new Date(normalized);
+  if (!Number.isFinite(parsed.getTime())) return value;
+  return parsed.toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    ...(includeTime ? { hour: "numeric", minute: "2-digit", hour12: true } : {}),
+  });
+}
+
+function safeImageUrl(value: string): string {
   if (!value) return "";
   try {
     const url = new URL(value, window.location.origin);
-    return ["http:", "https:"].includes(url.protocol)
-      ? escapeHtml(url.href)
-      : "";
+    return ["http:", "https:"].includes(url.protocol) ? escapeHtml(url.href) : "";
   } catch {
     return "";
   }
 }
 
-export function buildAdmissionClearanceDocument(
-  result: AdmissionClearanceResult,
-): string {
-  const { applicant, application, biodata, sponsors, education } = result.data;
-  const row = (label: string, value: string) =>
-    `<div class="row"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></div>`;
-  const section = (title: string, content: string) =>
-    `<section><h4>${title}</h4>${content}</section>`;
-  const fullName =
-    pick(applicant, ["name", "full_name", "fullName", "candidate_name"], "") ||
-    [
-      pick(applicant, ["surname", "last_name"], ""),
-      pick(applicant, ["first_name", "firstname"], ""),
-      pick(applicant, ["middle_name", "other_names"], ""),
-    ]
-      .filter(Boolean)
-      .join(" ") ||
-    "Not provided";
-  const passport = imageUrl(
-    pick(biodata, ["passport_photo_url", "passport_photo", "photo_url"], ""),
-  );
-  const brand = new URL(
-    `${import.meta.env.BASE_URL}brand/`,
-    window.location.origin,
-  );
-  const sponsorRows =
-    sponsors
-      .map(
-        (record) =>
-          `<tr><td>${escapeHtml(pick(record, ["name", "sponsor_name"]))}</td><td>${escapeHtml(pick(record, ["address", "sponsor_address"]))}</td></tr>`,
-      )
-      .join("") ||
-    '<tr><td colspan="2">No sponsorship record provided.</td></tr>';
-  const educationRows =
-    education
-      .map((record) => {
-        const period = (prefix: string) =>
-          pick(record, [prefix], "") ||
-          [
-            pick(record, [`${prefix}_month`], ""),
-            pick(record, [`${prefix}_year`], ""),
-          ]
-            .filter(Boolean)
-            .join(", ") ||
-          "Not provided";
-        const cells = [
-          pick(record, ["school", "institution", "institution_name"]),
-          period("from"),
-          period("to"),
-          pick(record, ["degree", "degree_name", "qualification"]),
-          date(pick(record, ["award_date", "date_award", "date_of_award"], "")),
-          pick(record, ["course", "course_of_study", "discipline"]),
-          pick(record, ["class_obtained", "class", "class_name", "obtained"]),
-        ];
-        return `<tr>${cells.map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`;
-      })
-      .join("") ||
-    '<tr><td colspan="7">No educational record provided.</td></tr>';
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admission Clearance Form</title><style>
-*{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0;background:#f5f7f9;color:#1f2933;font:13px/1.45 Arial,sans-serif}.document{background:white;margin:6px auto;max-width:1100px;padding:18px 22px}header{display:grid;grid-template-columns:90px minmax(0,1fr) 90px;gap:18px;align-items:center;border:2px solid #0A2B4F;border-radius:4px;padding:12px;text-align:center;margin-bottom:18px}header img{max-height:76px;max-width:86px;object-fit:contain}h2{margin:0;font-size:22px;line-height:1.25;color:#4b5563}h3{display:inline-block;background:#0A2B4F;color:white;font-size:15px;margin:14px 0 0;padding:7px 18px}.meta,.note{background:#f8fafc;border:1px solid #d7dee8;padding:12px 14px}.row{display:grid;grid-template-columns:220px minmax(0,1fr);gap:12px;margin-bottom:6px}.row strong{color:#374151}.row span{color:#111827;overflow-wrap:anywhere}section{margin-top:20px}h4{background:#f2f6fa;border-left:4px solid #0A2B4F;color:#0A2B4F;font-size:14px;margin:0 0 10px;padding:8px 10px}.biodata{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:20px}.passport{display:flex;align-items:center;justify-content:center;width:120px;height:120px;background:#f8fafc;border:1px solid #cbd5e1;color:#6b7280}.passport img{width:100%;height:100%;object-fit:cover}.two-column{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}.two-column .row{grid-template-columns:1fr;gap:2px}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}th,td{border:1px solid #cbd5e1;padding:6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#f1f5f9;color:#374151}.table-wrap{overflow-x:auto}.education{min-width:650px}.declaration{border-top:1px solid #d7dee8;margin-top:24px;padding-top:14px}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin:26px 0 14px}.sign-line{height:26px;border-bottom:1px dotted #111827}footer{border-top:1px solid #d7dee8;margin-top:30px;padding-top:12px;text-align:center;color:#4b5563}footer p{margin:2px 0}.demo{background:#fffbeb;color:#92400e;padding:10px;text-align:center;margin-bottom:12px}tr,header,.meta,.declaration{break-inside:avoid}thead{display:table-header-group}
-@media screen and (max-width:768px){.document{padding:14px}header{grid-template-columns:56px minmax(0,1fr) 56px;gap:10px}header img{max-width:52px;max-height:52px}h2{font-size:17px}.biodata,.two-column,.signatures{grid-template-columns:1fr}.row{grid-template-columns:1fr;gap:2px}}
-@media print{@page{size:A4;margin:12mm}body{background:white}.document{margin:0;padding:0;max-width:none}.table-wrap{overflow:visible}.education{min-width:0}header{grid-template-columns:76px minmax(0,1fr) 76px}.row{grid-template-columns:180px minmax(0,1fr)}}
-</style></head><body><main class="document">${result.source === "demo" ? "" : ""}
-<header><img src="${escapeHtml(new URL("pgc-logo.png", brand).href)}" alt="Postgraduate College logo"><div><h2>The Postgraduate College</h2><h2>University of Ibadan</h2><h3>ACCEPTANCE OF OFFER OF PROVISIONAL ADMISSION</h3></div><img src="${escapeHtml(new URL("ui-logo.png", brand).href)}" alt="University of Ibadan logo"></header>
-<div class="meta">${row("Application Number", pick(applicant, ["application_number", "applicationNumber", "appno", "numeration"]))}${row("Form Number", pick(application, ["form_number", "formno", "form_no"]))}${row("Session", pick(application, ["session", "apply_session"]))}</div>
-${section("BIODATA INFORMATION", `<div class="biodata"><div>${row("Name of Candidate", fullName)}${row("Maiden Name", pick(biodata, ["maiden_name", "maidenName"], "Not Applicable"))}${row("Date of Birth", date(pick(biodata, ["date_of_birth", "dob"], "")))}${row("State of Origin", pick(biodata, ["state", "state_of_origin"]))}${row("Local Government Area", pick(biodata, ["lga", "local_government", "local_government_area"]))}${row("Permanent Home Address", pick(biodata, ["permanent_address", "permanentAddress", "home_address"]))}</div><div class="passport">${passport ? `<img src="${passport}" alt="Passport">` : "No Passport"}</div></div>`)}
-${section("PROPOSED PROGRAM OF STUDY", `<div class="two-column">${row("Proposed Faculty of Study", pick(application, ["faculty_name", "faculty"]))}${row("Proposed Department of Study", pick(application, ["department_name", "department"]))}${row("Proposed Degree / Diploma", pick(application, ["degree_name", "degree"]))}${row("Proposed Mode of Study", pick(application, ["mode_of_study_name", "mode_of_study", "modeOfStudy"]))}${row("Field of Interest", pick(application, ["field_title", "field_of_interest", "specialization"]))}</div>`)}
-${section("SPONSORSHIP", `<table><thead><tr><th>Name</th><th>Address</th></tr></thead><tbody>${sponsorRows}</tbody></table>`)}
-${section("EDUCATIONAL RECORD(S)", `<div class="table-wrap"><table class="education"><thead><tr><th>School</th><th>From</th><th>To</th><th>Degree / Diploma</th><th>Date of Award</th><th>Course of Study/Discipline</th><th>Class Obtained</th></tr></thead><tbody>${educationRows}</tbody></table></div>`)}
-<div class="declaration"><p>Declaration: I <b>${escapeHtml(fullName)}</b> accept the offer of admission into the above programme. Any alteration renders the document invalid.</p><div class="signatures"><div><div class="sign-line"></div><strong>Signature</strong></div><div><div class="sign-line"></div><strong>Date</strong></div></div><p class="note"><strong>Note:</strong> The University is not bound to honour any request for the deferment of an offer not taken up in any given academic year. Candidates requesting for deferment offers are therefore advised to re-apply for admission in the following year.</p></div>
-<footer><p>Copyright © ${new Date().getFullYear()} The Postgraduate College, I.T. Unit</p><p>Contact: Tel: 09090561432</p><p>Email: ${escapeHtml(COLLEGE.email)}</p></footer></main></body></html>`;
+function statusClass(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (["yes", "verified", "cleared", "approved"].includes(normalized)) return "yes";
+  if (normalized === "discharge") return "discharge";
+  return "no";
+}
+
+export function buildAdmissionClearanceDocument(result: AdmissionClearanceResult): string {
+  const { student, programme, verification, clearance, certificate } = result.data;
+  const brand = new URL(`${import.meta.env.BASE_URL}brand/`, window.location.origin);
+  const signature = safeImageUrl(clearance.signatureUrl);
+  const verificationRow = (label: string, value: string) =>
+    `<tr><td>${escapeHtml(label)}</td><td class="center"><span class="badge ${statusClass(value)}">${display(value, "None")}</span></td></tr>`;
+  const previousAdmission = verification.previousAdmission || "No";
+  const verifier = verification.verifierName
+    ? `${verification.verifierName}${verification.verifierDesignation ? ` (${verification.verifierDesignation})` : ""}`
+    : verification.verifierDesignation;
+
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Student Clearance Certificate - ${escapeHtml(student.fullName)}</title><style>
+*{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0;background:#f4f4f9;color:#222;font:12px/1.4 Arial,sans-serif}.document{width:min(760px,calc(100% - 24px));margin:12px auto;background:#fff;padding:18px}.certificate{position:relative;border:1px solid #111;padding:22px}.certificate:before{content:"";position:absolute;inset:5px;border:1px solid #111;pointer-events:none}.content{position:relative;z-index:1}.issued{text-align:right;font-size:11px}.header{display:grid;grid-template-columns:70px 1fr 70px;align-items:center;gap:14px;text-align:center;margin:8px 0 14px}.header img{width:68px;height:68px;object-fit:contain}.college{font-size:20px;font-weight:700;color:#0a2b4f}.university,.unit{font-size:13px}.title{margin:14px 0 18px;text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;color:#0a2b4f}.section{margin-top:14px}.section-head{display:flex;justify-content:space-between;gap:15px;background:#0a2b4f;color:#fff;padding:7px 9px;font-size:12px;font-weight:700}.section-head span:last-child{text-align:right}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d5d8dc;padding:6px 8px;text-align:left;vertical-align:top}th{width:36%;background:#f2f2f2}.verification td:first-child{width:55%}.center{text-align:center}.badge{display:inline-block;min-width:62px;border-radius:999px;padding:2px 9px;color:#fff;font-size:11px;text-align:center}.badge.yes{background:#148447}.badge.no{background:#b7791f}.badge.discharge{background:#1565c0}.signature{width:280px;max-width:80%;margin:34px auto 10px;text-align:center}.signature img{display:block;max-width:150px;height:62px;object-fit:contain;margin:0 auto -4px}.signature-space{height:48px}.signature-line{border-top:1px solid #111;padding-top:5px}.signature-name{font-weight:700}.signature-title{font-style:italic}.footer{border-top:1px solid #ddd;margin-top:20px;padding-top:10px;text-align:center;color:#555}.certificate-id{margin-top:7px;border:1px dashed #bbb;background:#f8f9fa;padding:4px;font:10px monospace;overflow-wrap:anywhere}@media(max-width:560px){.document{width:100%;margin:0;padding:8px}.certificate{padding:14px}.header{grid-template-columns:45px 1fr 45px}.header img{width:44px;height:44px}.college{font-size:16px}.section-head{display:block}.section-head span{display:block!important;text-align:left!important}}@media print{@page{size:A4;margin:12mm}body{background:#fff}.document{width:100%;margin:0;padding:0}.certificate{break-inside:avoid}}
+</style></head><body><main class="document"><article class="certificate"><div class="content">
+<div class="issued">${display(formatDate(certificate.generatedAt, true))}</div>
+<header class="header"><img src="${escapeHtml(new URL("ui-logo.png", brand).href)}" alt="University of Ibadan logo"><div><div class="college">The Postgraduate College</div><div class="university">University of Ibadan</div><div class="unit">Admissions Unit</div></div><img src="${escapeHtml(new URL("pgc-logo.png", brand).href)}" alt="Postgraduate College logo"></header>
+<div class="title">Student Clearance Certificate</div>
+<section class="section"><div class="section-head"><span>Student Information</span><span>Session of Entry: ${display(student.sessionOfEntry)}</span></div><table><tbody><tr><th>Application Number</th><td>${display(student.applicationNumber)}</td></tr><tr><th>Full Name</th><td>${display(student.fullName)}</td></tr><tr><th>Faculty</th><td>${display(programme.faculty)}</td></tr><tr><th>Department</th><td>${display(programme.department)}</td></tr><tr><th>Degree</th><td>${display(programme.degree)}</td></tr><tr><th>Field of Interest</th><td>${display(programme.fieldTitle)}</td></tr></tbody></table></section>
+<section class="section"><div class="section-head"><span>Document Verification Status</span></div><table class="verification"><tbody>${verificationRow("First Degree", verification.firstDegree)}${verificationRow("Second Degree", verification.secondDegree)}${verificationRow("Other Document", verification.otherDocument)}${verificationRow("NYSC Verification", verification.nysc)}${verificationRow("Transcript Verification", verification.transcript)}${verificationRow("O'Level Verification", verification.oLevel)}<tr><td>Previous Admission</td><td><b>Previous Admission:</b> ${display(previousAdmission)}${affirmative(previousAdmission) ? `<br><b>Matric Number:</b> ${display(verification.previousMatricNumber, "N/A")}` : ""}</td></tr><tr><td>Verifying Officer</td><td>${display(verifier)}</td></tr><tr><td>Date Cleared</td><td>${display(formatDate(verification.dateCleared, true))}</td></tr></tbody></table></section>
+<div class="signature">${signature ? `<img src="${signature}" alt="Admissions Officer signature">` : '<div class="signature-space"></div>'}<div class="signature-line"><div class="signature-name">${display(clearance.approverName)}</div><div class="signature-title">${display(clearance.approverDesignation, "Admissions Officer")}</div></div></div>
+<footer class="footer"><p>This document certifies that the above student has fulfilled all verification and clearance requirements.</p><div class="certificate-id">CERTIFICATE ID: ${display(certificate.id)}</div></footer>
+</div></article></main></body></html>`;
 }

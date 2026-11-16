@@ -14,7 +14,7 @@ import { loadDashboardFinancials } from '../data/dashboardFinancials'
 import type { FinancialSummary } from '../types'
 import { authenticatedUser } from '../data/auth'
 import { isDemoSession } from '../data/auth'
-import { isPhdDegree } from '../data/degree'
+import { isCourseFreePhdProgramme, isPhdDegree } from '../data/degree'
 import { confirmCourseRegistration, infoIsLocked, loadCourseLock } from '../data/courseRegistration'
 import { TriangleAlert } from 'lucide-react'
 
@@ -25,7 +25,9 @@ export default function DashboardPage() {
   const paymentLapsed = user?.lapse_status?.payment_lapse === true
   const sessionLapsed = user?.lapse_status?.session_lapse === true
   const showExamination = isPhdDegree(programme?.degree)
+  const courseFreePhd = isCourseFreePhdProgramme(programme?.degree)
   const norReady = isDemoSession() || user?.nor_ready === true
+  const clearanceReady = isDemoSession() || user?.clearance_status?.cleared === true
   const conversionAvailable = typeof user?.conversion_url === 'string' && !!user.conversion_url.trim()
   const sections = SERVICE_SECTIONS.filter((section) => {
     if (paymentLapsed) return section.id === 'payments'
@@ -33,9 +35,17 @@ export default function DashboardPage() {
     return section.id !== 'examination' || showExamination
   }).map((section) => {
     if (section.id === 'process')
-      return { ...section, services: section.services.filter((service) => service.id !== 'result-notification' || norReady) }
+      return {
+        ...section,
+        services: section.services.filter((service) =>
+          (service.id !== 'result-notification' || norReady) &&
+          (service.id !== 'clearance-form' || clearanceReady)
+        ),
+      }
     if (section.id === 'examination')
       return { ...section, services: section.services.filter((service) => service.id !== 'conversion' || conversionAvailable) }
+    if (section.id === 'course-form' && courseFreePhd)
+      return { ...section, services: section.services.filter((service) => service.id !== 'register-courses') }
     return section
   })
   const [financials, setFinancials] = useState<FinancialSummary | null>(isDemoSession() ? FINANCIALS : null)
@@ -71,14 +81,14 @@ export default function DashboardPage() {
     lockController.current = controller
     try {
       if (infoLocked) {
-        await Swal.fire({ icon: 'info', title: 'Registration is locked', text: 'Contact the Management to request changes to your courses.', confirmButtonColor: '#0A2B4F' })
+        await Swal.fire({ icon: 'info', title: 'Registration is locked', text: courseFreePhd ? 'Your programme registration is locked. Contact the Management if it needs to be unlocked.' : 'Contact the Management to request changes to your courses.', confirmButtonColor: '#0A2B4F' })
         return
       }
       const result = await Swal.fire({
         icon: 'warning',
-        title: 'Lock your course registration?',
-        text: 'Please review your saved courses before proceeding. Locking prevents further changes; only the Management can unlock your registration.',
-        showDenyButton: true,
+        title: courseFreePhd ? 'Lock your programme registration?' : 'Lock your course registration?',
+        text: courseFreePhd ? 'Ph.D students do not register courses. Proceed to confirm and lock your registration for the current session.' : 'Please review your saved courses before proceeding. Locking prevents further changes; only the Management can unlock your registration.',
+        showDenyButton: !courseFreePhd,
         showCancelButton: true,
         confirmButtonText: 'Proceed to Lock',
         denyButtonText: 'Review Courses',
@@ -108,13 +118,13 @@ export default function DashboardPage() {
         },
       })
       if (controller.signal.aborted) return
-      if (result.isDenied) navigate('/dashboard/register-courses')
-      if (result.isConfirmed) await Swal.fire({ icon: 'success', title: 'Registration locked', text: 'Your course registration has been confirmed and locked.', confirmButtonColor: '#0A2B4F' })
+      if (result.isDenied && !courseFreePhd) navigate('/dashboard/register-courses')
+      if (result.isConfirmed) await Swal.fire({ icon: 'success', title: 'Registration locked', text: courseFreePhd ? 'Your programme registration has been confirmed and locked.' : 'Your course registration has been confirmed and locked.', confirmButtonColor: '#0A2B4F' })
     } finally {
       lockBusy.current = false
       lockController.current = null
     }
-  }, [infoLocked, navigate])
+  }, [courseFreePhd, infoLocked, navigate])
   useEffect(() => {
     if (paymentLapsed) return
     const controller = new AbortController()

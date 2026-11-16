@@ -8,6 +8,7 @@ import { authenticatedUser, validateSession } from './data/auth'
 import PortalLoading from './components/PortalLoading'
 import SharedLoginPage from './pages/SharedLoginPage'
 import SharedLoginCallback from './pages/SharedLoginCallback'
+import { isCourseFreePhdProgramme } from './data/degree'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<'loading' | 'authenticated' | 'guest'>('loading')
@@ -25,6 +26,12 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function RequireProgrammeAccess({ children }: { children: React.ReactNode }) {
   const lapse = authenticatedUser()?.lapse_status
   return lapse?.payment_lapse === true || lapse?.session_lapse === true
+    ? <Navigate to="/dashboard" replace />
+    : <>{children}</>
+}
+
+function RequireCourseRegistrationAccess({ children }: { children: React.ReactNode }) {
+  return isCourseFreePhdProgramme(authenticatedUser()?.programme?.degree)
     ? <Navigate to="/dashboard" replace />
     : <>{children}</>
 }
@@ -50,7 +57,9 @@ export default function App() {
           element={
             <RequireAuth>
               <RequireProgrammeAccess>
-                <RegisterCoursesPage />
+                <RequireCourseRegistrationAccess>
+                  <RegisterCoursesPage />
+                </RequireCourseRegistrationAccess>
               </RequireProgrammeAccess>
             </RequireAuth>
           }

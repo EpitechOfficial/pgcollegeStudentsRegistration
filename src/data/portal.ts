@@ -117,6 +117,7 @@ export const SCHOOL_FEE_SCHEDULE = {
 
 export const FINANCIALS: FinancialSummary = {
   totalFees: SCHOOL_FEE_TOTAL,
+  originalTotalFees: null,
   amountPaid: 180_000,
   walletBalance: 0,
   session: CURRENT_SESSION,

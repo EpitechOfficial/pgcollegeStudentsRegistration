@@ -27,17 +27,17 @@ export async function paymentsRequest(path: string, signal: AbortSignal): Promis
 }
 export interface FeeSchedule {
   faculty: string; department: string; degree: string; modeOfStudy: string; studentType: string; session: string
-  degreeCategory: string; currency: string; total: number; items: { description: string; amount: number }[]; demo: boolean
+  degreeCategory: string; currency: string; total: number; originalAmount: number | null; items: { description: string; amount: number }[]; demo: boolean
 }
 export async function loadFeeSchedule(signal: AbortSignal): Promise<FeeSchedule> {
-  if (isDemoSession()) return { ...SCHOOL_FEE_SCHEDULE, degreeCategory: '', currency: 'NGN', total: SCHOOL_FEE_SCHEDULE.items.reduce((sum, item) => sum + item.amount, 0), demo: true }
+  if (isDemoSession()) return { ...SCHOOL_FEE_SCHEDULE, degreeCategory: '', currency: 'NGN', total: SCHOOL_FEE_SCHEDULE.items.reduce((sum, item) => sum + item.amount, 0), originalAmount: null, demo: true }
   const data = paymentObject(await paymentsRequest('schedule', signal))
   if (!Array.isArray(data.fee_items)) throw new Error('Invalid fee schedule.')
   const text = (key: string) => typeof data[key] === 'string' ? data[key] as string : ''
   return {
     session: text('session'), faculty: text('faculty'), department: text('department'), degree: text('degree'),
     modeOfStudy: text('mode_of_study'), studentType: text('type'), degreeCategory: text('degree_category'), currency: text('currency') || 'NGN',
-    total: paymentAmount(data.total_amount), demo: false,
+    total: paymentAmount(data.total_amount), originalAmount: data.original_amount == null ? null : paymentAmount(data.original_amount), demo: false,
     items: data.fee_items.map(value => { const item = paymentObject(value); if (typeof item.description !== 'string') throw new Error('Invalid fee description.'); return { description: item.description, amount: paymentAmount(item.amount) } }),
   }
 }

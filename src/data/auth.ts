@@ -33,6 +33,10 @@ export interface AuthUser {
   } | null;
   financial_summary?: Record<string, unknown> | null;
   admission_status?: Record<string, unknown> | null;
+  clearance_status?: {
+    cleared?: boolean;
+    status?: string | null;
+  } | null;
   lapse_status?: {
     payment_lapse?: boolean;
     session_lapse?: boolean;

@@ -21,3 +21,7 @@ export const isPhdDegree = (value: unknown = ''): boolean => {
 
   return tokens.some((token) => phdTokens.has(token));
 };
+
+/** Ph.D programmes do not require course selection, including named specializations. */
+export const isCourseFreePhdProgramme = (value: unknown = ''): boolean =>
+  /^p\s*\.?\s*h\s*\.?\s*d\s*\.?(?:\s|$)/i.test(String(value ?? '').trim());
