@@ -102,12 +102,12 @@ function AdmissionLetterPreview({ data }) {
   const official = (type) => officials.find((record) => record.officer_type === type);
   const deputyRegistrar = official("deputy_registrar");
   const admissionOfficer = official("admission_officer");
-  const deputyRegistrarSignature = admissionStatus.signature_url ||
-    `${import.meta.env.BASE_URL}signatures/deputy-registrar.png`;
 
   const applicant = data?.auth?.applicant || {};
   const application = data?.auth?.application || {};
   const admissionStatus = data?.auth?.admission_status || {};
+  const deputyRegistrarSignature = admissionStatus.signature_url ||
+    `${import.meta.env.BASE_URL}signatures/deputy-registrar.png`;
   const biodata = data?.biodata || {};
   const dashboard = data?.auth?.dashboard || {};
   const eligibility = dashboard.eligibility || {};
@@ -128,10 +128,12 @@ function AdmissionLetterPreview({ data }) {
   ]);
   const letterDate = admissionStatus.letter_date;
   const letterCode = admissionStatus.letter_code;
-  const letterStatus =
-    admissionStatus.letter_signed?.toLowerCase() === "yes"
-      ? "Signed"
-      : "Not Signed";
+  const letterSignedValue = String(admissionStatus.letter_signed ?? "")
+    .trim()
+    .toLowerCase();
+  const letterStatus = ["yes", "true", "1", "signed"].includes(letterSignedValue)
+    ? "Signed"
+    : "Not Signed";
   const letterReadyValue = String(
     admissionStatus.letter_ready || "",
   ).toLowerCase();
