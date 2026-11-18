@@ -49,6 +49,7 @@ interface Session {
   token: string;
   user: AuthUser;
   expiresAt: number;
+  verifiedAt?: number;
 }
 const STORAGE_KEY = "pgc.portal.auth";
 const REMEMBER_KEY = "pgc.portal.remember";
@@ -317,7 +318,10 @@ async function verifySession(session: Session): Promise<boolean> {
   const storage = sessionStorage.getItem(STORAGE_KEY)
     ? sessionStorage
     : localStorage;
-  storage.setItem(STORAGE_KEY, JSON.stringify({ ...session, user }));
+  storage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ ...session, user, verifiedAt: Date.now() }),
+  );
   return true;
 }
 
@@ -325,6 +329,10 @@ export function validateSession(): Promise<boolean> {
   const session = readSession();
   if (!session) return Promise.resolve(false);
   if (session.mode === "demo") return Promise.resolve(true);
+  // Shared login already verifies this token with /auth/user before saving it.
+  // Avoid a duplicate request during the immediate iframe-to-dashboard navigation.
+  if (session.verifiedAt && Date.now() - session.verifiedAt < 30_000)
+    return Promise.resolve(true);
   if (sessionValidation?.token === session.token)
     return sessionValidation.promise;
 
@@ -363,13 +371,14 @@ export async function acceptSharedLogin(
     );
   signal.throwIfAborted();
   try {
-    sessionStorage.setItem(
+    localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         mode: "backend",
         token,
         user,
         expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+        verifiedAt: Date.now(),
       } satisfies Session),
     );
   } catch {
