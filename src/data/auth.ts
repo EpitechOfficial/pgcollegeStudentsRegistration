@@ -330,7 +330,7 @@ export function validateSession(): Promise<boolean> {
   if (!session) return Promise.resolve(false);
   if (session.mode === "demo") return Promise.resolve(true);
   // Shared login already verifies this token with /auth/user before saving it.
-  // Avoid a duplicate request during the immediate iframe-to-dashboard navigation.
+  // Avoid a duplicate request during the immediate callback-to-dashboard navigation.
   if (session.verifiedAt && Date.now() - session.verifiedAt < 30_000)
     return Promise.resolve(true);
   if (sessionValidation?.token === session.token)

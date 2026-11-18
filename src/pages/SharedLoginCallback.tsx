@@ -1,52 +1,30 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { acceptSharedLogin } from '../data/auth'
-import { APPLICATION_LOGIN_URL, validHandoffMessage } from '../data/sharedLogin'
+import { APPLICATION_LOGIN_URL } from '../data/sharedLogin'
 import PortalLoading from '../components/PortalLoading'
 import { ArrowLeft, ShieldAlert } from 'lucide-react'
 
 export default function SharedLoginCallback() {
   const navigate = useNavigate()
   const [error, setError] = useState('')
-  const [nonce] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('handoff') || '')
+  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get('token')?.trim() || '')
   useEffect(() => {
-    const embedded = window.parent !== window
-    const opener = (embedded ? window.parent : window.opener) as Window | null
-    const origin = new URL(APPLICATION_LOGIN_URL).origin
     const controller = new AbortController()
-    let receiving = false
     window.history.replaceState(window.history.state, '', window.location.pathname)
-    const timeout = window.setTimeout(() => {
-      controller.abort()
-      setError('This sign-in handoff has expired. Please sign in again.')
-    }, 60000)
-    const receive = async (event: MessageEvent) => {
-      if (receiving || controller.signal.aborted || !/^[a-f0-9]{64}$/.test(nonce) || !validHandoffMessage(event, opener, nonce)) return
-      receiving = true
-      try {
-        await acceptSharedLogin(event.data.token, controller.signal)
-        if (controller.signal.aborted) return
-        opener?.postMessage({ type: 'pgc:registration-complete', nonce }, origin)
-        if (!embedded) {
-          window.opener = null
-          navigate('/dashboard', { replace: true, state: { flashSuccess: 'Signed in successfully.' } })
-        }
-      } catch (failure) {
-        if (!controller.signal.aborted) {
-          const message = failure && typeof failure === 'object' && 'message' in failure ? String(failure.message) : 'Unable to complete sign-in.'
-          setError(message)
-          opener?.postMessage({ type: 'pgc:registration-failed', nonce, message }, origin)
-        }
-      } finally { window.clearTimeout(timeout) }
+    if (!token) {
+      setError('This sign-in link is incomplete. Please sign in again.')
+      return () => controller.abort()
     }
-    const ready = () => {
-      if (!receiving && !controller.signal.aborted) opener?.postMessage({ type: 'pgc:registration-ready', nonce }, origin)
-    }
-    window.addEventListener('message', receive)
-    ready()
-    const interval = window.setInterval(ready, 500)
-    return () => { controller.abort(); window.clearTimeout(timeout); window.clearInterval(interval); window.removeEventListener('message', receive) }
-  }, [navigate, nonce])
+    void acceptSharedLogin(token, controller.signal)
+      .then(() => {
+        if (!controller.signal.aborted) navigate('/dashboard', { replace: true, state: { flashSuccess: 'Signed in successfully.' } })
+      })
+      .catch((failure: unknown) => {
+        if (!controller.signal.aborted) setError(failure && typeof failure === 'object' && 'message' in failure ? String(failure.message) : 'Unable to complete sign-in.')
+      })
+    return () => controller.abort()
+  }, [navigate, token])
   return error ? <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-5 py-12 text-navy">
     <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl shadow-navy/5 sm:p-10">
       <img src={`${import.meta.env.BASE_URL}brand/pgc-logo.png`} alt="The Postgraduate College" className="mx-auto mb-5 h-20 w-20 object-contain" />
