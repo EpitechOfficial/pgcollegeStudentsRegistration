@@ -3,6 +3,7 @@ import type { CourseOption as Course } from '../types'
 import type { ReceiptDetails } from './feeDocument'
 import { isDemoSession } from './auth'
 import { courseRequest, courseList, object } from './courseApi'
+import { loadApplicationApplicant } from './applicationDocuments'
 
 interface ContactDetails { name?: string; address?: string; telephone?: string; email?: string }
 interface EducationDetails { school: string; from: string; to: string; qualification: string; discipline: string }
@@ -44,8 +45,14 @@ export async function loadCourseForms(signal: AbortSignal): Promise<CourseFormRe
     } catch { /* Ignore an invalid optional preview. */ }
     return confirmedForms
   }
-  const payload = await courseRequest('print', signal)
-  return mapCoursePrintHistory(payload.data)
+  const [payload, applicant] = await Promise.all([
+    courseRequest('print', signal),
+    loadApplicationApplicant(signal).catch(() => null),
+  ])
+  return mapCoursePrintHistory(payload.data).map((record) => ({
+    ...record,
+    passportUrl: record.passportUrl || applicant?.passportPhotoUrl || null,
+  }))
 }
 
 const text = (value: unknown): string => typeof value === 'string' || typeof value === 'number' ? String(value) : ''
@@ -97,7 +104,10 @@ export function mapCoursePrintHistory(value: unknown): CourseFormRecord[] {
 
 export async function loadCourseForm(record: CourseFormRecord, signal: AbortSignal): Promise<CourseFormRecord> {
   if (isDemoSession()) return record
-  const payload = await courseRequest(`session-print?session=${encodeURIComponent(record.session)}`, signal)
+  const [payload, applicant] = await Promise.all([
+    courseRequest(`session-print?session=${encodeURIComponent(record.session)}`, signal),
+    loadApplicationApplicant(signal).catch(() => null),
+  ])
   const printable = mapSession(object(payload.data), object(payload.data))
   return {
     ...printable,
@@ -105,7 +115,7 @@ export async function loadCourseForm(record: CourseFormRecord, signal: AbortSign
     sponsor: printable.sponsor ?? record.sponsor,
     employer: printable.employer ?? record.employer,
     education: printable.education?.length ? printable.education : record.education,
-    passportUrl: printable.passportUrl || record.passportUrl,
+    passportUrl: printable.passportUrl || record.passportUrl || applicant?.passportPhotoUrl || null,
   }
 }
 export function buildCourseForm(record: CourseFormRecord): string {

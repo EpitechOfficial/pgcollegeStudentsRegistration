@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, LoaderCircle, Printer, X } from "lucide-react";
+import { LoaderCircle, Printer, X } from "lucide-react";
 import {
   buildAdmissionClearanceDocument,
   loadAdmissionClearance,
@@ -11,9 +11,6 @@ import { useFlashToast } from "./useFlashToast";
 
 const primary =
   "inline-flex items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-700 disabled:cursor-not-allowed disabled:opacity-50";
-const secondary =
-  "inline-flex items-center justify-center gap-2 rounded-xl border border-navy/20 bg-navy/5 px-4 py-2.5 text-sm font-semibold text-navy hover:bg-navy/10 disabled:opacity-50";
-
 export default function AdmissionClearanceDialog({
   onClose,
 }: {

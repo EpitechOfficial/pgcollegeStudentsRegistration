@@ -13,7 +13,7 @@ export interface LetterOfficial {
 }
 
 // Preview fixtures from the supplied table; never used as a fallback for a failed API request.
-const DEMO_OFFICIALS: LetterOfficial[] = [
+export const FALLBACK_LETTER_OFFICIALS: LetterOfficial[] = [
   { id: 1, officer_type: 'provost', title: 'Provost', name: 'Prof. K. M. Samuel', credentials: 'B. A. (Ife), PGDE (Ilorin), M. A. Ph.D (Ibadan)', mobile: '+2348034781804', email: 'provost@pgcollege.ui.edu.ng', secondary_email: 'symphonykay@gmail.com', is_active: 1 },
   { id: 2, officer_type: 'deputy_registrar', title: 'Deputy Registrar', name: 'A. O. Olaoye', credentials: 'B.A.(Hons)Ife, MMP(Ibadan), MANUPA, MCIPDM.', mobile: '08067904060', email: 'deputyregistrar@pgcollege.ui.edu.ng', secondary_email: null, is_active: 1 },
   { id: 3, officer_type: 'deputy_provost_admin', title: 'Deputy Provost (Administration)', name: 'Prof. A. O. Abolaji', credentials: 'B.Sc. (Ile-Ife), M.Sc. (Lagos), Ph.D. (Calabar)', mobile: '+2348068614194', email: 'deputyprovostadmin@pgcollege.ui.edu.ng', secondary_email: 'amosabolajiao@gmail.com', is_active: 1 },
@@ -26,7 +26,7 @@ export function activeLetterOfficials(records: LetterOfficial[]): LetterOfficial
 
 export async function loadLetterOfficials(signal: AbortSignal): Promise<LetterOfficial[]> {
   const endpoint = import.meta.env.VITE_LETTER_OFFICIALS_URL
-  if (!endpoint) { signal.throwIfAborted(); return DEMO_OFFICIALS }
+  if (!endpoint) { signal.throwIfAborted(); return FALLBACK_LETTER_OFFICIALS }
   const response = await fetch(endpoint, {
     headers: { Accept: 'application/json' },
     signal,
@@ -46,4 +46,11 @@ export async function loadLetterOfficials(signal: AbortSignal): Promise<LetterOf
     .map((record) => ({ ...record, is_active: record.is_active ?? 1 }))
 
   return activeLetterOfficials(officials)
+}
+
+/** Axios-shaped compatibility helper used by the application admission-letter template. */
+export async function getLetterOfficials(options: { signal?: AbortSignal } = {}) {
+  const controller = options.signal ? null : new AbortController()
+  const records = await loadLetterOfficials(options.signal ?? controller!.signal)
+  return { data: { data: records } }
 }

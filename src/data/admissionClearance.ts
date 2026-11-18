@@ -240,7 +240,12 @@ function statusClass(value: string): string {
 export function buildAdmissionClearanceDocument(result: AdmissionClearanceResult): string {
   const { student, programme, verification, clearance, certificate } = result.data;
   const brand = new URL(`${import.meta.env.BASE_URL}brand/`, window.location.origin);
-  const signature = safeImageUrl(clearance.signatureUrl);
+  const signature = safeImageUrl(
+    clearance.signatureUrl ||
+      (clearance.cleared
+        ? `${import.meta.env.BASE_URL}signatures/admission-officer.png`
+        : ""),
+  );
   const verificationRow = (label: string, value: string) =>
     `<tr><td>${escapeHtml(label)}</td><td class="center"><span class="badge ${statusClass(value)}">${display(value, "None")}</span></td></tr>`;
   const previousAdmission = verification.previousAdmission || "No";

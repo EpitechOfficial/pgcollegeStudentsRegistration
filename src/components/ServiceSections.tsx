@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import {
   BookOpen,
   ChevronDown,
@@ -6,10 +7,12 @@ import {
   CreditCard,
   ExternalLink,
   FileText,
+  Files,
   GraduationCap,
   HeartPulse,
   Lock,
   LockOpen,
+  TriangleAlert,
   Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -29,12 +32,19 @@ import WalletDepositDialog from "./WalletDepositDialog";
 import WalletPaymentDialog from "./WalletPaymentDialog";
 import WalletHistoryDialog from "./WalletHistoryDialog";
 import CourseFormsDialog from "./CourseFormsDialog";
+import ApplicationDocumentsDialog from "./ApplicationDocumentsDialog";
+import type { ApplicationDocumentSlug } from "./ApplicationDocumentsDialog";
 import FlashToast from "./FlashToast";
 import { useFlashToast } from "./useFlashToast";
 import { loadSuspension } from "../data/suspension";
 import { authenticatedUser, isDemoSession } from "../data/auth";
+import {
+  initiateApplicationDocumentPayment,
+  loadApplicationDocumentAccess,
+} from "../data/applicationDocumentAccess";
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
+  "application-documents": Files,
   process: FileText,
   payments: CreditCard,
   "course-form": BookOpen,
@@ -143,6 +153,70 @@ export default function ServiceSections({
   onOpenRegisterCourses,
 }: ServiceSectionsProps) {
   const { toast, showToast, dismissToast } = useFlashToast();
+  const [applicationDocument, setApplicationDocument] = useState<ApplicationDocumentSlug | null>(null);
+  const [checkingDocumentAccess, setCheckingDocumentAccess] = useState(false);
+
+  async function openApplicationDocument(slug: ApplicationDocumentSlug) {
+    if (checkingDocumentAccess) return;
+    setCheckingDocumentAccess(true);
+    const controller = new AbortController();
+    try {
+      Swal.fire({
+        title: "Checking document access",
+        text: "Please wait while we confirm your payment.",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+      const access = await loadApplicationDocumentAccess(controller.signal);
+      Swal.close();
+      if (access.granted) {
+        setApplicationDocument(slug);
+        return;
+      }
+
+      if (access.paymentStatus === "pending" && !access.expired) {
+        await Swal.fire({
+          icon: "info",
+          title: "Payment confirmation pending",
+          text: access.message || "Your payment for access to all Application Documents is still being confirmed. Please try again shortly.",
+          confirmButtonColor: "#0A2B4F",
+        });
+        return;
+      }
+
+      const amount = access.amount
+        ? `${access.currency === "NGN" ? "₦" : `${access.currency} `}${access.amount.toLocaleString("en-NG")}`
+        : "the required fee";
+      const result = await Swal.fire({
+        icon: access.expired ? "warning" : "info",
+        title: access.expired ? "Document access has expired" : "Payment required",
+        html: access.expired
+          ? `<p>Your previous access period ended${access.expiresAt ? ` on <strong>${new Date(access.expiresAt).toLocaleString("en-NG")}</strong>` : ""}.</p><p>One renewal payment unlocks all Application Documents for another <strong>48 hours</strong>.</p>`
+          : `<p>Pay <strong>${amount}</strong> once to unlock all Application Documents.</p><p class="swal2-small">You can view and print every document for <strong>48 hours</strong> after payment is confirmed.</p>`,
+        showCancelButton: true,
+        confirmButtonText: access.expired ? "Renew Access" : "Proceed to Payment",
+        cancelButtonText: "Not Now",
+        confirmButtonColor: "#0A2B4F",
+      });
+      if (!result.isConfirmed) return;
+
+      Swal.fire({ title: "Preparing payment", text: "Connecting you to the payment provider…", allowOutsideClick: false, allowEscapeKey: false, showConfirmButton: false, didOpen: () => Swal.showLoading() });
+      const paymentUrl = await initiateApplicationDocumentPayment(controller.signal);
+      window.location.assign(paymentUrl);
+    } catch (error) {
+      Swal.close();
+      await Swal.fire({
+        icon: "error",
+        title: "Unable to continue",
+        text: error instanceof Error ? error.message : "Unable to verify document access. Please try again.",
+        confirmButtonColor: "#0A2B4F",
+      });
+    } finally {
+      setCheckingDocumentAccess(false);
+    }
+  }
   const suspensionServiceAvailable =
     !sessionLapsed && sections.some((section) => section.id === "process");
   const [reactivationAccess, setReactivationAccess] = useState<
@@ -244,10 +318,19 @@ export default function ServiceSections({
     ? sections
         .filter(
           (section) =>
-            section.id === "payments" || section.id === "course-form",
+            section.id === "process" ||
+            section.id === "payments" ||
+            section.id === "course-form",
         )
         .map((section) =>
-          section.id === "course-form"
+          section.id === "process"
+            ? {
+                ...section,
+                services: section.services.filter(
+                  (service) => service.id === "reactivation-suspension",
+                ),
+              }
+            : section.id === "course-form"
             ? {
                 ...section,
                 services: section.services.filter(
@@ -263,6 +346,26 @@ export default function ServiceSections({
   return (
     <section aria-label="Portal services" className="space-y-4">
       <FlashToast toast={toast} onDismiss={dismissToast} />
+      {suspensionRestricted && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-sm"
+        >
+          <TriangleAlert
+            className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
+            aria-hidden="true"
+          />
+          <div>
+            <p className="text-sm font-bold">Programme currently suspended</p>
+            <p className="mt-1 text-xs leading-relaxed">
+              Your suspension has been approved and your programme has not yet
+              been reactivated. You can submit your reactivation form, use
+              payment services, and print your Course Form while reactivation
+              is being processed.
+            </p>
+          </div>
+        </div>
+      )}
       {/* Section Title */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -550,7 +653,25 @@ export default function ServiceSections({
                                                                           setFinancialClearanceOpen(
                                                                             true,
                                                                           )
-                                                                      : undefined
+                                                                      : [
+                                                                          "application-form",
+                                                                          "eligibility-form",
+                                                                          "transcript-label",
+                                                                          "acceptance-form",
+                                                                          "application-status",
+                                                                          "photo-card",
+                                                                          "admission-letter",
+                                                                        ].includes(service.id)
+                                                                        ? () => void openApplicationDocument({
+                                                                            "application-form": "applicationForm",
+                                                                            "eligibility-form": "eligibilityForm",
+                                                                            "transcript-label": "transcriptLabel",
+                                                                            "acceptance-form": "acceptanceForm",
+                                                                            "application-status": "applicationStatus",
+                                                                            "photo-card": "photoCard",
+                                                                            "admission-letter": "admissionLetter",
+                                                                          }[service.id] as ApplicationDocumentSlug)
+                                                                        : undefined
                                 }
                                 disabled={isLocked}
                                 aria-disabled={isLocked}
@@ -730,6 +851,9 @@ export default function ServiceSections({
             setSchoolFeesOpen(true);
           }}
         />
+      )}
+      {applicationDocument && (
+        <ApplicationDocumentsDialog initialDocument={applicationDocument} onClose={() => setApplicationDocument(null)} />
       )}
     </section>
   );

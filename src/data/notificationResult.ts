@@ -149,9 +149,12 @@ export function buildNotificationResultDocument(data: NotificationResultData = D
     return escapeHtml(Number.isFinite(parsed.getTime()) ? parsed.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) : value)
   }
   let signature = ''
-  if (data.signatureUrl) {
+  const signatureUrl = data.signatureUrl || (letterSignatory
+    ? `${import.meta.env.BASE_URL}signatures/deputy-registrar.png`
+    : '')
+  if (signatureUrl) {
     try {
-      const url = new URL(data.signatureUrl, window.location.origin)
+      const url = new URL(signatureUrl, window.location.origin)
       if (['http:', 'https:'].includes(url.protocol)) signature = `<img src="${escapeHtml(url.href)}" alt="Deputy Registrar signature">`
     } catch { /* Leave the signature blank when its URL is invalid. */ }
   }

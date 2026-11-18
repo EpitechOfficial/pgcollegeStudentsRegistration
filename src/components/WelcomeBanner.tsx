@@ -1,10 +1,29 @@
+import { useEffect, useState } from 'react'
 import { Calendar, GraduationCap, User } from 'lucide-react'
 import { currentSession, currentStudent } from '../data/portal'
+import { isDemoSession } from '../data/auth'
+import { loadApplicationApplicant } from '../data/applicationDocuments'
 
 export default function WelcomeBanner({ greeting = true }: { greeting?: boolean }) {
   const Heading = greeting ? 'h1' : 'h2'
   const student = currentStudent()
   const session = currentSession()
+  const [passportUrl, setPassportUrl] = useState<string | null>(null)
+  const [passportFailed, setPassportFailed] = useState(false)
+
+  useEffect(() => {
+    if (isDemoSession()) return
+    const controller = new AbortController()
+    void loadApplicationApplicant(controller.signal)
+      .then((applicant) => {
+        if (!controller.signal.aborted) {
+          setPassportUrl(applicant.passportPhotoUrl)
+          setPassportFailed(false)
+        }
+      })
+      .catch(() => { /* The welcome card keeps its neutral avatar on failure. */ })
+    return () => controller.abort()
+  }, [])
   return (
     <section
       aria-label="Student overview"
@@ -14,10 +33,19 @@ export default function WelcomeBanner({ greeting = true }: { greeting?: boolean 
         {/* Left: Avatar + Greeting */}
         <div className="flex min-w-0 items-start gap-4">
           <div
-            className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-full bg-[#0A2B4F] text-white shadow-sm ring-4 ring-[#0A2B4F]/10"
-            aria-hidden="true"
+            className="flex h-14 w-14 sm:h-16 sm:w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#0A2B4F] text-white shadow-sm ring-4 ring-[#0A2B4F]/10"
           >
-            <User className="h-6 w-6 sm:h-7 sm:w-7" />
+            {passportUrl && !passportFailed ? (
+              <img
+                src={passportUrl}
+                alt={`${student.name}'s passport`}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+                onError={() => setPassportFailed(true)}
+              />
+            ) : (
+              <User className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden="true" />
+            )}
           </div>
           <div className="min-w-0">
             <Heading className="text-lg font-bold tracking-tight text-[#212529] sm:text-xl">

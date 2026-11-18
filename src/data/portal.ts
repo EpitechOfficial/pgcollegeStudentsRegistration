@@ -16,6 +16,7 @@ import {
   RefreshCw,
   ScanEye,
   Upload,
+  Files,
 } from 'lucide-react'
 import type { CourseOption, FinancialSummary, ServiceSection, Student } from '../types'
 import { authenticatedUser, isDemoSession } from './auth'
@@ -145,6 +146,7 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
     title: 'Payments',
     note: 'Fees, receipts and financial clearance',
     services: [
+      { id: 'sundry-payment', label: 'Sundry Payment', icon: CreditCard, action: 'external-link', externalUrl: 'https://apps.pgcollege.ui.edu.ng/sundry/apply_new.jsp' },
       { id: 'schedule-of-fees', label: 'Schedule of Fees', icon: Receipt },
       { id: 'payment-record', label: 'Payment Records', icon: CreditCard },
       // { id: 'print-receipt', label: 'Print Receipt', icon: ReceiptText },
@@ -192,6 +194,20 @@ export const SERVICE_SECTIONS: ServiceSection[] = [
       { id: 'deposit', label: 'Deposit', icon: Banknote },
       { id: 'make-payment', label: 'Make Payment', icon: CreditCard },
       { id: 'history', label: 'History', icon: Clock },
+    ],
+  },
+  {
+    id: 'application-documents',
+    title: 'Application Documents',
+    note: 'One payment unlocks all admission application documents',
+    services: [
+      { id: 'application-form', label: 'Application Form', icon: FileText },
+      { id: 'eligibility-form', label: 'Eligibility Form', icon: FileCheck },
+      { id: 'transcript-label', label: 'Transcript Label Form', icon: Printer },
+      { id: 'acceptance-form', label: 'Acceptance Form', icon: BadgeCheck },
+      { id: 'application-status', label: 'Application Status', icon: ClipboardList },
+      { id: 'photo-card', label: 'Photo Card', icon: Files },
+      { id: 'admission-letter', label: 'Admission Letter', icon: GraduationCap },
     ],
   },
 ]

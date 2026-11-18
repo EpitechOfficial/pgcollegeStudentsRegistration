@@ -2,6 +2,7 @@ import { isDemoSession } from './auth'
 import { paymentAmount, paymentObject, paymentsRequest } from './paymentsApi'
 import { COLLEGE, CURRENT_SESSION, SCHOOL_FEE_ITEMS, STUDENT } from './portal'
 import type { ReceiptDetails } from './feeDocument'
+import { loadApplicationApplicant } from './applicationDocuments'
 
 export interface FinancialClearance {
   summary?: { total: number; paid: number; balance: number; status: string }
@@ -68,7 +69,11 @@ export async function loadFinancialClearance(signal: AbortSignal): Promise<{ sou
 
 export async function loadFinancialClearanceDocument(signal: AbortSignal, invoiceNumber?: string): Promise<FinancialClearance> {
   const path = invoiceNumber ? `financial-clearance/print/${encodeURIComponent(invoiceNumber)}` : 'financial-clearance/print'
-  const data = paymentObject(await paymentsRequest(path, signal))
+  const [printPayload, applicant] = await Promise.all([
+    paymentsRequest(path, signal),
+    loadApplicationApplicant(signal).catch(() => null),
+  ])
+  const data = paymentObject(printPayload)
   const student = paymentObject(data.student)
   const signatory = paymentObject(data.signatory)
   if (typeof data.session !== 'string' || !Array.isArray(data.line_items)) throw new Error('Invalid financial clearance print details.')
@@ -107,7 +112,9 @@ export async function loadFinancialClearanceDocument(signal: AbortSignal, invoic
       supervisor: text(student, 'supervisor'),
       firstRegistrationSession: text(student, 'first_reg_session'),
     },
+    passportUrl: text(data, 'passport_url') || text(student, 'passport_url') || applicant?.passportPhotoUrl || null,
     clearedAt: text(data, 'date_paid') || null,
+    signatureUrl: text(data, 'signature_url') || null,
     status: text(data, 'clearance_status'),
     signatory: {
       title: text(signatory, 'title'),
@@ -146,7 +153,9 @@ export function buildFinancialClearanceDocument(record: FinancialClearance, demo
     ['Session of First Registration', student.firstRegistrationSession],
   ].map(([label, value]) => field(label!, value)).join('')
   const passport = imageUrl(record.passportUrl)
-  const signature = issued ? imageUrl(record.signatureUrl) : ''
+  const signature = issued
+    ? imageUrl(record.signatureUrl || `${import.meta.env.BASE_URL}signatures/deputy-registrar.png`)
+    : ''
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Financial Clearance Form</title><style>
 *{box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}body{margin:0;background:#f5f7f9;color:#172033;font:12px/1.4 Arial,sans-serif}.document{max-width:1000px;margin:0 auto;background:white;padding:20px}header{display:grid;grid-template-columns:72px minmax(0,1fr) 72px;gap:16px;align-items:center;text-align:center;border-bottom:2px solid #0A2B4F;padding-bottom:14px;margin-bottom:14px}header img{width:72px;height:72px;object-fit:contain}header h1{font-size:17px;margin:0;color:#0A2B4F}header h2{font-size:15px;margin:5px 0;color:#0A2B4F}header p{margin:3px}.notice{padding:10px;background:#fffbeb;color:#92400e;text-align:center;margin-bottom:12px}.meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;background:#f2f6fa;border:1px solid #e5e7eb;padding:12px;margin-bottom:12px}.meta .field{display:block}.field{display:grid;grid-template-columns:43% minmax(0,1fr);gap:8px;padding:3px 0;font-size:11px;break-inside:avoid}.field span{color:#64748b}.field b{overflow-wrap:anywhere;font-weight:600}.biodata{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:20px;border:1px solid #e5e7eb;padding:12px;margin-bottom:14px}.passport{width:110px;height:130px;border:1px solid #cbd5e1;display:flex;align-items:center;justify-content:center;text-align:center;color:#64748b}.passport img{width:100%;height:100%;object-fit:cover}table{width:100%;border-collapse:collapse}th,td{padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:left}thead{display:table-header-group;background:#0A2B4F;color:white}td:last-child,th:last-child{text-align:right;white-space:nowrap}tfoot{display:table-row-group;background:#f2f6fa;font-weight:bold;color:#0A2B4F}tr{break-inside:avoid}.position{display:flex;justify-content:space-between;gap:16px;margin:14px 0;padding:10px;border:1px solid #e5e7eb}.signature{margin:24px 0 0 auto;width:330px;text-align:center;break-inside:avoid}.signature img{display:block;max-width:180px;height:65px;object-fit:contain;margin:8px auto}.signature .blank{height:60px;border-bottom:1px dashed #94a3b8}.signature p{margin:4px 0}.note{color:#64748b;font-size:11px}
 @media screen and (max-width:540px){.document{padding:12px}header{grid-template-columns:45px minmax(0,1fr) 45px;gap:8px}header img{width:45px;height:45px}header h1{font-size:13px}.meta{grid-template-columns:1fr}.biodata{grid-template-columns:1fr}.signature{width:100%}.position{flex-wrap:wrap}}
